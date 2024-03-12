@@ -52,6 +52,21 @@ pub struct MessagesResponseBody {
     pub usage: Usage,
 }
 
+impl Default for MessagesResponseBody {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            _type: "message".to_string(),
+            role: Default::default(),
+            content: Default::default(),
+            model: Default::default(),
+            stop_reason: Default::default(),
+            stop_sequence: Default::default(),
+            usage: Default::default(),
+        }
+    }
+}
+
 impl_display_for_serialize!(MessagesResponseBody);
 
 #[cfg(test)]
@@ -101,7 +116,7 @@ mod tests {
             response
         );
     }
-    
+
     #[test]
     fn display() {
         let response = MessagesResponseBody {

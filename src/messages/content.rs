@@ -41,6 +41,8 @@ pub enum ContentBlock {
     Text(TextContentBlock),
     /// The image content block.
     Image(ImageContentBlock),
+    /// The text delta content block.
+    TextDelta(TextDeltaContentBlock),
 }
 
 impl Default for ContentBlock {
@@ -53,7 +55,8 @@ impl_enum_struct_serialization!(
     ContentBlock,
     type,
     Text(TextContentBlock, "text"),
-    Image(ImageContentBlock, "image")
+    Image(ImageContentBlock, "image"),
+    TextDelta(TextDeltaContentBlock, "text_delta")
 );
 
 impl_display_for_serialize!(ContentBlock);
@@ -79,12 +82,33 @@ impl Default for TextContentBlock {
 
 impl_display_for_serialize!(TextContentBlock);
 
-impl TextContentBlock {
-    /// Creates a new text content block.
-    pub fn new(text: String) -> Self {
+impl From<String> for TextContentBlock {
+    fn from(text: String) -> Self {
         Self {
             _type: ContentType::Text,
             text,
+        }
+    }
+}
+
+impl From<&str> for TextContentBlock {
+    fn from(text: &str) -> Self {
+        Self {
+            _type: ContentType::Text,
+            text: text.to_string(),
+        }
+    }
+}
+
+impl TextContentBlock {
+    /// Creates a new text content block.
+    pub fn new<S>(text: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            _type: ContentType::Text,
+            text: text.into(),
         }
     }
 }
@@ -127,6 +151,8 @@ pub enum ContentType {
     Text,
     /// image
     Image,
+    /// text_delta
+    TextDelta,
 }
 
 impl Default for ContentType {
@@ -147,6 +173,9 @@ impl Display for ContentType {
             | ContentType::Image => {
                 write!(f, "image")
             },
+            | ContentType::TextDelta => {
+                write!(f, "text_delta")
+            },
         }
     }
 }
@@ -154,7 +183,8 @@ impl Display for ContentType {
 impl_enum_string_serialization!(
     ContentType,
     Text => "text",
-    Image => "image"
+    Image => "image",
+    TextDelta => "text_delta"
 );
 
 /// The image content source.
@@ -261,6 +291,52 @@ impl_enum_string_serialization!(
     Webp => "image/webp"
 );
 
+/// The text delta content block.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct TextDeltaContentBlock {
+    /// The content type. It is always `text_delta`.
+    #[serde(rename = "type")]
+    pub _type: ContentType,
+    /// The text delta content.
+    pub text: String,
+}
+
+impl Default for TextDeltaContentBlock {
+    fn default() -> Self {
+        Self {
+            _type: ContentType::TextDelta,
+            text: String::new(),
+        }
+    }
+}
+
+impl_display_for_serialize!(TextDeltaContentBlock);
+
+impl From<String> for TextDeltaContentBlock {
+    fn from(text: String) -> Self {
+        Self::new(text)
+    }
+}
+
+impl From<&str> for TextDeltaContentBlock {
+    fn from(text: &str) -> Self {
+        Self::new(text)
+    }
+}
+
+impl TextDeltaContentBlock {
+    /// Creates a new text content block.
+    pub(crate) fn new<S>(text: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            _type: ContentType::TextDelta,
+            text: text.into(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -285,6 +361,10 @@ mod tests {
     fn display_content_type() {
         assert_eq!(ContentType::Text.to_string(), "text");
         assert_eq!(ContentType::Image.to_string(), "image");
+        assert_eq!(
+            ContentType::TextDelta.to_string(),
+            "text_delta"
+        );
     }
 
     #[test]
@@ -297,6 +377,10 @@ mod tests {
             serde_json::to_string(&ContentType::Image).unwrap(),
             "\"image\""
         );
+        assert_eq!(
+            serde_json::to_string(&ContentType::TextDelta).unwrap(),
+            "\"text_delta\""
+        );
     }
 
     #[test]
@@ -308,6 +392,10 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<ContentType>("\"image\"").unwrap(),
             ContentType::Image
+        );
+        assert_eq!(
+            serde_json::from_str::<ContentType>("\"text_delta\"").unwrap(),
+            ContentType::TextDelta
         );
     }
 
@@ -573,6 +661,63 @@ mod tests {
     }
 
     #[test]
+    fn new_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            text_delta_content_block,
+            TextDeltaContentBlock {
+                _type: ContentType::TextDelta,
+                text: "text".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn default_text_delta_content_block() {
+        assert_eq!(
+            TextDeltaContentBlock::default(),
+            TextDeltaContentBlock {
+                _type: ContentType::TextDelta,
+                text: String::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn display_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            text_delta_content_block.to_string(),
+            "{\n  \"type\": \"text_delta\",\n  \"text\": \"text\"\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            serde_json::to_string(&text_delta_content_block).unwrap(),
+            "{\"type\":\"text_delta\",\"text\":\"text\"}"
+        );
+    }
+
+    #[test]
+    fn deserialize_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            serde_json::from_str::<TextDeltaContentBlock>(
+                "{\"type\":\"text_delta\",\"text\":\"text\"}"
+            )
+            .unwrap(),
+            text_delta_content_block
+        );
+    }
+
+    #[test]
     fn new_content_block() {
         let content_block = ContentBlock::Text(TextContentBlock::new(
             "text".to_string(),
@@ -593,6 +738,17 @@ mod tests {
             ContentBlock::Image(ImageContentBlock {
                 _type: ContentType::Image,
                 source: ImageContentSource::default(),
+            })
+        );
+
+        let content_block = ContentBlock::TextDelta(
+            TextDeltaContentBlock::new("text".to_string()),
+        );
+        assert_eq!(
+            content_block,
+            ContentBlock::TextDelta(TextDeltaContentBlock {
+                _type: ContentType::TextDelta,
+                text: "text".to_string(),
             })
         );
     }
@@ -622,6 +778,14 @@ mod tests {
             content_block.to_string(),
             "{\n  \"type\": \"image\",\n  \"source\": {\n    \"type\": \"base64\",\n    \"media_type\": \"image/jpeg\",\n    \"data\": \"\"\n  }\n}"
         );
+
+        let content_block = ContentBlock::TextDelta(
+            TextDeltaContentBlock::new("text".to_string()),
+        );
+        assert_eq!(
+            content_block.to_string(),
+            "{\n  \"type\": \"text_delta\",\n  \"text\": \"text\"\n}"
+        );
     }
 
     #[test]
@@ -640,6 +804,14 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&content_block).unwrap(),
             "{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}"
+        );
+
+        let content_block = ContentBlock::TextDelta(
+            TextDeltaContentBlock::new("text".to_string()),
+        );
+        assert_eq!(
+            serde_json::to_string(&content_block).unwrap(),
+            "{\"type\":\"text_delta\",\"text\":\"text\"}"
         );
     }
 
@@ -661,6 +833,17 @@ mod tests {
         ));
         assert_eq!(
             serde_json::from_str::<ContentBlock>("{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}").unwrap(),
+            content_block
+        );
+
+        let content_block = ContentBlock::TextDelta(
+            TextDeltaContentBlock::new("text".to_string()),
+        );
+        assert_eq!(
+            serde_json::from_str::<ContentBlock>(
+                "{\"type\":\"text_delta\",\"text\":\"text\"}"
+            )
+            .unwrap(),
             content_block
         );
     }
