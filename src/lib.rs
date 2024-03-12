@@ -14,7 +14,7 @@
 //!
 //! is as follows:
 //!
-//! ```rust
+//! ```rust,no_run
 //! use clust::messages::ClaudeModel;
 //! use clust::messages::MaxTokens;
 //! use clust::messages::Message;
