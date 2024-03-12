@@ -1,0 +1,29 @@
+[package]
+name = "clust"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mochineko <t.o.e.4315@gmail.com>"]
+rust-version = "1.76"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+description = "An unofficial Rust client for the the Anthropic/Claude API."
+documentation = "https://docs.rs/clust"
+repository = "https://github.com/mochi-neko/clust"
+categories = ["api-bindings", "science"]
+keywords = ["claude", "rest", "api", "client", "machine-learning"]
+
+[lib]
+path = "src/lib.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = { version = "0.11.25", features = ["json"] }
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+thiserror = "1.0.57"
+
+[dev-dependencies]
+anyhow = "1.0.80"
+clap = { version = "4.5.2", features = ["derive"] }
+tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
