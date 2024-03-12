@@ -40,3 +40,108 @@ impl UserId {
         }
     }
 }
+
+impl From<&str> for UserId {
+    fn from(value: &str) -> Self {
+        Self {
+            value: value.to_string(),
+        }
+    }
+}
+
+impl From<String> for UserId {
+    fn from(value: String) -> Self {
+        Self {
+            value,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_metadata() {
+        let metadata = Metadata {
+            user_id: UserId::new("user-id"),
+        };
+        assert_eq!(metadata.user_id.value, "user-id");
+    }
+
+    #[test]
+    fn display_metadata() {
+        let metadata = Metadata {
+            user_id: UserId::new("user-id"),
+        };
+        assert_eq!(
+            metadata.to_string(),
+            "{\n  \"user_id\": \"user-id\"\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_metadata() {
+        let metadata = Metadata {
+            user_id: UserId::new("user-id"),
+        };
+        assert_eq!(
+            serde_json::to_string(&metadata).unwrap(),
+            "{\"user_id\":\"user-id\"}"
+        );
+    }
+
+    #[test]
+    fn deserialize_metadata() {
+        let metadata = Metadata {
+            user_id: UserId::new("user-id"),
+        };
+        assert_eq!(
+            serde_json::from_str::<Metadata>("{\"user_id\":\"user-id\"}")
+                .unwrap(),
+            metadata
+        );
+    }
+
+    #[test]
+    fn new_user_id() {
+        let user_id = UserId::new("user-id");
+        assert_eq!(user_id.value, "user-id");
+    }
+
+    #[test]
+    fn from_str_user_id() {
+        let user_id = UserId::from("user-id");
+        assert_eq!(user_id.value, "user-id");
+    }
+
+    #[test]
+    fn from_string_user_id() {
+        let user_id = UserId::from("user-id".to_string());
+        assert_eq!(user_id.value, "user-id");
+    }
+
+    #[test]
+    fn display_user_id() {
+        let user_id = UserId::new("user-id");
+        assert_eq!(user_id.to_string(), "user-id");
+    }
+
+    #[test]
+    fn serialize_user_id() {
+        let user_id = UserId::new("user-id");
+        assert_eq!(
+            serde_json::to_string(&user_id).unwrap(),
+            "\"user-id\""
+        );
+    }
+
+    #[test]
+    fn deserialize_user_id() {
+        let user_id = UserId::new("user-id");
+        assert_eq!(
+            serde_json::from_str::<UserId>("\"user-id\"").unwrap(),
+            user_id
+        );
+    }
+}

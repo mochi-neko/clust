@@ -14,9 +14,9 @@ pub enum Content {
     MultipleBlock(Vec<ContentBlock>),
 }
 
-impl From<ContentBlock> for Content {
-    fn from(block: ContentBlock) -> Self {
-        Self::MultipleBlock(vec![block])
+impl Default for Content {
+    fn default() -> Self {
+        Self::SingleText(String::new())
     }
 }
 
@@ -32,6 +32,8 @@ impl_enum_with_string_or_array_serialization!(
     MultipleBlock(ContentBlock)
 );
 
+impl_display_for_serialize!(Content);
+
 /// The content block of the message.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ContentBlock {
@@ -41,12 +43,20 @@ pub enum ContentBlock {
     Image(ImageContentBlock),
 }
 
+impl Default for ContentBlock {
+    fn default() -> Self {
+        Self::Text(TextContentBlock::default())
+    }
+}
+
 impl_enum_struct_serialization!(
     ContentBlock,
     type,
     Text(TextContentBlock, "text"),
     Image(ImageContentBlock, "image")
 );
+
+impl_display_for_serialize!(ContentBlock);
 
 /// The text content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -57,6 +67,17 @@ pub struct TextContentBlock {
     /// The text content.
     pub text: String,
 }
+
+impl Default for TextContentBlock {
+    fn default() -> Self {
+        Self {
+            _type: ContentType::Text,
+            text: String::new(),
+        }
+    }
+}
+
+impl_display_for_serialize!(TextContentBlock);
 
 impl TextContentBlock {
     /// Creates a new text content block.
@@ -77,6 +98,17 @@ pub struct ImageContentBlock {
     /// The image content source.
     pub source: ImageContentSource,
 }
+
+impl Default for ImageContentBlock {
+    fn default() -> Self {
+        Self {
+            _type: ContentType::Image,
+            source: ImageContentSource::default(),
+        }
+    }
+}
+
+impl_display_for_serialize!(ImageContentBlock);
 
 impl ImageContentBlock {
     /// Creates a new image content block.
@@ -135,6 +167,16 @@ pub struct ImageContentSource {
     pub media_type: ImageMediaType,
     ///  The data of the image.
     pub data: String,
+}
+
+impl Default for ImageContentSource {
+    fn default() -> Self {
+        Self {
+            _type: ImageSourceType::default(),
+            media_type: ImageMediaType::default(),
+            data: String::new(),
+        }
+    }
 }
 
 impl_display_for_serialize!(ImageContentSource);
@@ -218,3 +260,508 @@ impl_enum_string_serialization!(
     Gif => "image/gif",
     Webp => "image/webp"
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_str() {
+        assert_eq!(
+            Content::from("text"),
+            Content::SingleText("text".to_string())
+        );
+    }
+
+    #[test]
+    fn default_content_type() {
+        assert_eq!(
+            ContentType::default(),
+            ContentType::Text
+        );
+    }
+
+    #[test]
+    fn display_content_type() {
+        assert_eq!(ContentType::Text.to_string(), "text");
+        assert_eq!(ContentType::Image.to_string(), "image");
+    }
+
+    #[test]
+    fn serialize_content_type() {
+        assert_eq!(
+            serde_json::to_string(&ContentType::Text).unwrap(),
+            "\"text\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContentType::Image).unwrap(),
+            "\"image\""
+        );
+    }
+
+    #[test]
+    fn deserialize_content_type() {
+        assert_eq!(
+            serde_json::from_str::<ContentType>("\"text\"").unwrap(),
+            ContentType::Text
+        );
+        assert_eq!(
+            serde_json::from_str::<ContentType>("\"image\"").unwrap(),
+            ContentType::Image
+        );
+    }
+
+    #[test]
+    fn default_image_source_type() {
+        assert_eq!(
+            ImageSourceType::default(),
+            ImageSourceType::Base64
+        );
+    }
+
+    #[test]
+    fn display_image_source_type() {
+        assert_eq!(
+            ImageSourceType::Base64.to_string(),
+            "base64"
+        );
+    }
+
+    #[test]
+    fn serialize_image_source_type() {
+        assert_eq!(
+            serde_json::to_string(&ImageSourceType::Base64).unwrap(),
+            "\"base64\""
+        );
+    }
+
+    #[test]
+    fn deserialize_image_source_type() {
+        assert_eq!(
+            serde_json::from_str::<ImageSourceType>("\"base64\"").unwrap(),
+            ImageSourceType::Base64
+        );
+    }
+
+    #[test]
+    fn default_image_media_type() {
+        assert_eq!(
+            ImageMediaType::default(),
+            ImageMediaType::Jpeg
+        );
+    }
+
+    #[test]
+    fn display_image_media_type() {
+        assert_eq!(
+            ImageMediaType::Jpeg.to_string(),
+            "image/jpeg"
+        );
+        assert_eq!(
+            ImageMediaType::Png.to_string(),
+            "image/png"
+        );
+        assert_eq!(
+            ImageMediaType::Gif.to_string(),
+            "image/gif"
+        );
+        assert_eq!(
+            ImageMediaType::Webp.to_string(),
+            "image/webp"
+        );
+    }
+
+    #[test]
+    fn serialize_image_media_type() {
+        assert_eq!(
+            serde_json::to_string(&ImageMediaType::Jpeg).unwrap(),
+            "\"image/jpeg\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ImageMediaType::Png).unwrap(),
+            "\"image/png\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ImageMediaType::Gif).unwrap(),
+            "\"image/gif\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ImageMediaType::Webp).unwrap(),
+            "\"image/webp\""
+        );
+    }
+
+    #[test]
+    fn deserialize_image_media_type() {
+        assert_eq!(
+            serde_json::from_str::<ImageMediaType>("\"image/jpeg\"").unwrap(),
+            ImageMediaType::Jpeg
+        );
+        assert_eq!(
+            serde_json::from_str::<ImageMediaType>("\"image/png\"").unwrap(),
+            ImageMediaType::Png
+        );
+        assert_eq!(
+            serde_json::from_str::<ImageMediaType>("\"image/gif\"").unwrap(),
+            ImageMediaType::Gif
+        );
+        assert_eq!(
+            serde_json::from_str::<ImageMediaType>("\"image/webp\"").unwrap(),
+            ImageMediaType::Webp
+        );
+    }
+
+    #[test]
+    fn default_image_content_source() {
+        assert_eq!(
+            ImageContentSource::default(),
+            ImageContentSource {
+                _type: ImageSourceType::Base64,
+                media_type: ImageMediaType::Jpeg,
+                data: String::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn display_image_content_source() {
+        let image_content_source = ImageContentSource {
+            _type: ImageSourceType::Base64,
+            media_type: ImageMediaType::Jpeg,
+            data: "data".to_string(),
+        };
+        assert_eq!(
+            image_content_source.to_string(),
+            "{\n  \"type\": \"base64\",\n  \"media_type\": \"image/jpeg\",\n  \"data\": \"data\"\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_image_content_source() {
+        let image_content_source = ImageContentSource {
+            _type: ImageSourceType::Base64,
+            media_type: ImageMediaType::Jpeg,
+            data: "data".to_string(),
+        };
+        assert_eq!(
+            serde_json::to_string(&image_content_source).unwrap(),
+            "{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"data\"}"
+        );
+    }
+
+    #[test]
+    fn deserialize_image_content_source() {
+        let image_content_source = ImageContentSource {
+            _type: ImageSourceType::Base64,
+            media_type: ImageMediaType::Jpeg,
+            data: "data".to_string(),
+        };
+        assert_eq!(
+            serde_json::from_str::<ImageContentSource>("{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"data\"}").unwrap(),
+            image_content_source
+        );
+    }
+
+    #[test]
+    fn new_text_content_block() {
+        let text_content_block = TextContentBlock::new("text".to_string());
+        assert_eq!(
+            text_content_block,
+            TextContentBlock {
+                _type: ContentType::Text,
+                text: "text".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn default_text_content_block() {
+        assert_eq!(
+            TextContentBlock::default(),
+            TextContentBlock {
+                _type: ContentType::Text,
+                text: String::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn display_text_content_block() {
+        let text_content_block = TextContentBlock::new("text".to_string());
+        assert_eq!(
+            text_content_block.to_string(),
+            "{\n  \"type\": \"text\",\n  \"text\": \"text\"\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_text_content_block() {
+        let text_content_block = TextContentBlock::new("text".to_string());
+        assert_eq!(
+            serde_json::to_string(&text_content_block).unwrap(),
+            "{\"type\":\"text\",\"text\":\"text\"}"
+        );
+    }
+
+    #[test]
+    fn deserialize_text_content_block() {
+        let text_content_block = TextContentBlock::new("text".to_string());
+        assert_eq!(
+            serde_json::from_str::<TextContentBlock>(
+                "{\"type\":\"text\",\"text\":\"text\"}"
+            )
+            .unwrap(),
+            text_content_block
+        );
+    }
+
+    #[test]
+    fn new_image_content_block() {
+        let image_content_block =
+            ImageContentBlock::new(ImageContentSource::default());
+        assert_eq!(
+            image_content_block,
+            ImageContentBlock {
+                _type: ContentType::Image,
+                source: ImageContentSource::default(),
+            }
+        );
+    }
+
+    #[test]
+    fn default_image_content_block() {
+        assert_eq!(
+            ImageContentBlock::default(),
+            ImageContentBlock {
+                _type: ContentType::Image,
+                source: ImageContentSource::default(),
+            }
+        );
+    }
+
+    #[test]
+    fn display_image_content_block() {
+        let image_content_block =
+            ImageContentBlock::new(ImageContentSource::default());
+        assert_eq!(
+            image_content_block.to_string(),
+            "{\n  \"type\": \"image\",\n  \"source\": {\n    \"type\": \"base64\",\n    \"media_type\": \"image/jpeg\",\n    \"data\": \"\"\n  }\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_image_content_block() {
+        let image_content_block =
+            ImageContentBlock::new(ImageContentSource::default());
+        assert_eq!(
+            serde_json::to_string(&image_content_block).unwrap(),
+            "{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}"
+        );
+    }
+
+    #[test]
+    fn deserialize_image_content_block() {
+        let image_content_block =
+            ImageContentBlock::new(ImageContentSource::default());
+        assert_eq!(
+            serde_json::from_str::<ImageContentBlock>(
+                "{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}"
+            )
+            .unwrap(),
+            image_content_block
+        );
+    }
+
+    #[test]
+    fn new_content_block() {
+        let content_block = ContentBlock::Text(TextContentBlock::new(
+            "text".to_string(),
+        ));
+        assert_eq!(
+            content_block,
+            ContentBlock::Text(TextContentBlock {
+                _type: ContentType::Text,
+                text: "text".to_string(),
+            })
+        );
+
+        let content_block = ContentBlock::Image(ImageContentBlock::new(
+            ImageContentSource::default(),
+        ));
+        assert_eq!(
+            content_block,
+            ContentBlock::Image(ImageContentBlock {
+                _type: ContentType::Image,
+                source: ImageContentSource::default(),
+            })
+        );
+    }
+
+    #[test]
+    fn default_content_block() {
+        assert_eq!(
+            ContentBlock::default(),
+            ContentBlock::Text(TextContentBlock::default())
+        );
+    }
+
+    #[test]
+    fn display_content_block() {
+        let content_block = ContentBlock::Text(TextContentBlock::new(
+            "text".to_string(),
+        ));
+        assert_eq!(
+            content_block.to_string(),
+            "{\n  \"type\": \"text\",\n  \"text\": \"text\"\n}"
+        );
+
+        let content_block = ContentBlock::Image(ImageContentBlock::new(
+            ImageContentSource::default(),
+        ));
+        assert_eq!(
+            content_block.to_string(),
+            "{\n  \"type\": \"image\",\n  \"source\": {\n    \"type\": \"base64\",\n    \"media_type\": \"image/jpeg\",\n    \"data\": \"\"\n  }\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_content_block() {
+        let content_block = ContentBlock::Text(TextContentBlock::new(
+            "text".to_string(),
+        ));
+        assert_eq!(
+            serde_json::to_string(&content_block).unwrap(),
+            "{\"type\":\"text\",\"text\":\"text\"}"
+        );
+
+        let content_block = ContentBlock::Image(ImageContentBlock::new(
+            ImageContentSource::default(),
+        ));
+        assert_eq!(
+            serde_json::to_string(&content_block).unwrap(),
+            "{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}"
+        );
+    }
+
+    #[test]
+    fn deserialize_content_block() {
+        let content_block = ContentBlock::Text(TextContentBlock::new(
+            "text".to_string(),
+        ));
+        assert_eq!(
+            serde_json::from_str::<ContentBlock>(
+                "{\"type\":\"text\",\"text\":\"text\"}"
+            )
+            .unwrap(),
+            content_block
+        );
+
+        let content_block = ContentBlock::Image(ImageContentBlock::new(
+            ImageContentSource::default(),
+        ));
+        assert_eq!(
+            serde_json::from_str::<ContentBlock>("{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}").unwrap(),
+            content_block
+        );
+    }
+
+    #[test]
+    fn new_content() {
+        let content = Content::SingleText("text".to_string());
+        assert_eq!(
+            content,
+            Content::SingleText("text".to_string())
+        );
+
+        let content = Content::MultipleBlock(vec![
+            ContentBlock::Text(TextContentBlock::new(
+                "text".to_string(),
+            )),
+            ContentBlock::Image(ImageContentBlock::new(
+                ImageContentSource::default(),
+            )),
+        ]);
+        assert_eq!(
+            content,
+            Content::MultipleBlock(vec![
+                ContentBlock::Text(TextContentBlock::new(
+                    "text".to_string()
+                )),
+                ContentBlock::Image(ImageContentBlock::new(
+                    ImageContentSource::default()
+                )),
+            ])
+        );
+    }
+
+    #[test]
+    fn default_content() {
+        assert_eq!(
+            Content::default(),
+            Content::SingleText(String::new())
+        );
+    }
+
+    #[test]
+    fn display_content() {
+        let content = Content::SingleText("text".to_string());
+        assert_eq!(content.to_string(), "\"text\"");
+
+        let content = Content::MultipleBlock(vec![
+            ContentBlock::Text(TextContentBlock::new(
+                "text".to_string(),
+            )),
+            ContentBlock::Image(ImageContentBlock::new(
+                ImageContentSource::default(),
+            )),
+        ]);
+        assert_eq!(
+            content.to_string(),
+            "[\n  {\n    \"type\": \"text\",\n    \"text\": \"text\"\n  },\n  {\n    \"type\": \"image\",\n    \"source\": {\n      \"type\": \"base64\",\n      \"media_type\": \"image/jpeg\",\n      \"data\": \"\"\n    }\n  }\n]"
+        );
+    }
+
+    #[test]
+    fn serialize_content() {
+        let content = Content::SingleText("text".to_string());
+        assert_eq!(
+            serde_json::to_string(&content).unwrap(),
+            "\"text\""
+        );
+
+        let content = Content::MultipleBlock(vec![
+            ContentBlock::Text(TextContentBlock::new(
+                "text".to_string(),
+            )),
+            ContentBlock::Image(ImageContentBlock::new(
+                ImageContentSource::default(),
+            )),
+        ]);
+        assert_eq!(
+            serde_json::to_string(&content).unwrap(),
+            "[{\"type\":\"text\",\"text\":\"text\"},{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}]"
+        );
+    }
+
+    #[test]
+    fn deserialize_content() {
+        let content = Content::SingleText("text".to_string());
+        assert_eq!(
+            serde_json::from_str::<Content>("\"text\"").unwrap(),
+            content
+        );
+
+        let content = Content::MultipleBlock(vec![
+            ContentBlock::Text(TextContentBlock::new(
+                "text".to_string(),
+            )),
+            ContentBlock::Image(ImageContentBlock::new(
+                ImageContentSource::default(),
+            )),
+        ]);
+        assert_eq!(
+            serde_json::from_str::<Content>("[{\"type\":\"text\",\"text\":\"text\"},{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}]").unwrap(),
+            content
+        );
+    }
+}

@@ -46,3 +46,56 @@ impl_enum_string_serialization!(
     MaxTokens => "max_tokens",
     StopSequence => "stop_sequence"
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display() {
+        assert_eq!(
+            StopReason::EndTurn.to_string(),
+            "end_turn"
+        );
+        assert_eq!(
+            StopReason::MaxTokens.to_string(),
+            "max_tokens"
+        );
+        assert_eq!(
+            StopReason::StopSequence.to_string(),
+            "stop_sequence"
+        );
+    }
+
+    #[test]
+    fn serialize() {
+        assert_eq!(
+            serde_json::to_string(&StopReason::EndTurn).unwrap(),
+            "\"end_turn\""
+        );
+        assert_eq!(
+            serde_json::to_string(&StopReason::MaxTokens).unwrap(),
+            "\"max_tokens\""
+        );
+        assert_eq!(
+            serde_json::to_string(&StopReason::StopSequence).unwrap(),
+            "\"stop_sequence\""
+        );
+    }
+
+    #[test]
+    fn deserialize() {
+        assert_eq!(
+            serde_json::from_str::<StopReason>("\"end_turn\"").unwrap(),
+            StopReason::EndTurn
+        );
+        assert_eq!(
+            serde_json::from_str::<StopReason>("\"max_tokens\"").unwrap(),
+            StopReason::MaxTokens
+        );
+        assert_eq!(
+            serde_json::from_str::<StopReason>("\"stop_sequence\"").unwrap(),
+            StopReason::StopSequence
+        );
+    }
+}

@@ -73,3 +73,133 @@ pub struct MessagesRequestBody {
 }
 
 impl_display_for_serialize!(MessagesRequestBody);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let messages_request_body = MessagesRequestBody {
+            model: ClaudeModel::Claude3Sonnet20240229,
+            messages: vec![],
+            max_tokens: MaxTokens::new(16, ClaudeModel::Claude3Sonnet20240229)
+                .unwrap(),
+            ..Default::default()
+        };
+        assert_eq!(
+            messages_request_body.model,
+            ClaudeModel::Claude3Sonnet20240229
+        );
+        assert_eq!(messages_request_body.messages, vec![]);
+        assert_eq!(messages_request_body.system, None);
+        assert_eq!(
+            messages_request_body.max_tokens,
+            MaxTokens::new(16, ClaudeModel::Claude3Sonnet20240229).unwrap()
+        );
+        assert_eq!(messages_request_body.metadata, None);
+        assert_eq!(
+            messages_request_body.stop_sequences,
+            None
+        );
+        assert_eq!(messages_request_body.stream, None);
+        assert_eq!(messages_request_body.temperature, None);
+        assert_eq!(messages_request_body.top_p, None);
+        assert_eq!(messages_request_body.top_k, None);
+    }
+
+    #[test]
+    fn default() {
+        let messages_request_body = MessagesRequestBody::default();
+        assert_eq!(
+            messages_request_body.model,
+            ClaudeModel::default()
+        );
+        assert_eq!(messages_request_body.messages, vec![]);
+        assert_eq!(messages_request_body.system, None);
+        assert_eq!(
+            messages_request_body.max_tokens,
+            MaxTokens::default()
+        );
+        assert_eq!(messages_request_body.metadata, None);
+        assert_eq!(
+            messages_request_body.stop_sequences,
+            None
+        );
+        assert_eq!(messages_request_body.stream, None);
+        assert_eq!(messages_request_body.temperature, None);
+        assert_eq!(messages_request_body.top_p, None);
+        assert_eq!(messages_request_body.top_k, None);
+    }
+
+    #[test]
+    fn display() {
+        let messages_request_body = MessagesRequestBody::default();
+        assert_eq!(
+            messages_request_body.to_string(),
+            "{\n  \"model\": \"claude-3-sonnet-20240229\",\n  \"messages\": [],\n  \"max_tokens\": 4096\n}"
+        );
+    }
+
+    #[test]
+    fn serialize() {
+        let messages_request_body = MessagesRequestBody::default();
+        assert_eq!(
+            serde_json::to_string(&messages_request_body).unwrap(),
+            "{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"max_tokens\":4096}"
+        );
+
+        let messages_request_body = MessagesRequestBody {
+            model: ClaudeModel::Claude3Sonnet20240229,
+            messages: vec![],
+            max_tokens: MaxTokens::new(16, ClaudeModel::Claude3Sonnet20240229)
+                .unwrap(),
+            system: Some(SystemPrompt::new("system-prompt")),
+            metadata: Some(Metadata {
+                user_id: "metadata".into(),
+            }),
+            stop_sequences: Some(vec![StopSequence::new(
+                "stop-sequence",
+            )]),
+            stream: Some(StreamOption::ReturnOnce),
+            temperature: Some(Temperature::new(0.5).unwrap()),
+            top_p: Some(TopP::new(0.5).unwrap()),
+            top_k: Some(TopK::new(50)),
+        };
+        assert_eq!(
+            serde_json::to_string(&messages_request_body).unwrap(),
+            "{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"system\":\"system-prompt\",\"max_tokens\":16,\"metadata\":{\"user_id\":\"metadata\"},\"stop_sequences\":[\"stop-sequence\"],\"stream\":false,\"temperature\":0.5,\"top_p\":0.5,\"top_k\":50}"
+        );
+    }
+
+    #[test]
+    fn deserialize() {
+        let messages_request_body = MessagesRequestBody::default();
+        assert_eq!(
+            serde_json::from_str::<MessagesRequestBody>("{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"max_tokens\":4096}").unwrap(),
+            messages_request_body
+        );
+
+        let messages_request_body = MessagesRequestBody {
+            model: ClaudeModel::Claude3Sonnet20240229,
+            messages: vec![],
+            max_tokens: MaxTokens::new(16, ClaudeModel::Claude3Sonnet20240229)
+                .unwrap(),
+            system: Some(SystemPrompt::new("system-prompt")),
+            metadata: Some(Metadata {
+                user_id: "metadata".into(),
+            }),
+            stop_sequences: Some(vec![StopSequence::new(
+                "stop-sequence",
+            )]),
+            stream: Some(StreamOption::ReturnOnce),
+            temperature: Some(Temperature::new(0.5).unwrap()),
+            top_p: Some(TopP::new(0.5).unwrap()),
+            top_k: Some(TopK::new(50)),
+        };
+        assert_eq!(
+            serde_json::from_str::<MessagesRequestBody>("{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"system\":\"system-prompt\",\"max_tokens\":16,\"metadata\":{\"user_id\":\"metadata\"},\"stop_sequences\":[\"stop-sequence\"],\"stream\":false,\"temperature\":0.5,\"top_p\":0.5,\"top_k\":50}").unwrap(),
+            messages_request_body
+        );
+    }
+}

@@ -71,3 +71,59 @@ impl MaxTokens {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default() {
+        assert_eq!(
+            MaxTokens::default(),
+            MaxTokens {
+                value: 4096
+            }
+        );
+    }
+
+    #[test]
+    fn display() {
+        assert_eq!(
+            MaxTokens {
+                value: 4096
+            }
+            .to_string(),
+            "4096"
+        );
+    }
+
+    #[test]
+    fn new() {
+        assert!(
+            MaxTokens::new(4096, ClaudeModel::Claude3Sonnet20240229).is_ok()
+        );
+        assert!(
+            MaxTokens::new(4097, ClaudeModel::Claude3Sonnet20240229).is_err()
+        );
+    }
+
+    #[test]
+    fn serialize() {
+        assert_eq!(
+            serde_json::to_string(&MaxTokens::default()).unwrap(),
+            "4096"
+        );
+        assert_eq!(
+            serde_json::from_str::<MaxTokens>("4096").unwrap(),
+            MaxTokens::default()
+        );
+    }
+
+    #[test]
+    fn deserialize() {
+        assert_eq!(
+            serde_json::from_str::<MaxTokens>("4096").unwrap(),
+            MaxTokens::default()
+        );
+    }
+}

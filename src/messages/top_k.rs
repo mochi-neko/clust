@@ -47,3 +47,46 @@ impl TopK {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let top_k = TopK::new(50);
+        assert_eq!(top_k.value, 50);
+    }
+    
+    #[test]
+    fn default() {
+        assert_eq!(TopK::default().value, 50);
+    }
+
+    #[test]
+    fn display() {
+        let top_k = TopK::new(50);
+        assert_eq!(
+            top_k.to_string(),
+            "50"
+        );
+    }
+    
+    #[test]
+    fn serialize() {
+        let top_k = TopK::new(50);
+        assert_eq!(
+            serde_json::to_string(&top_k).unwrap(),
+            "50"
+        );
+    }
+    
+    #[test]
+    fn deserialize() {
+        let top_k = TopK::new(50);
+        assert_eq!(
+            serde_json::from_str::<TopK>("50").unwrap(),
+            top_k
+        );
+    }
+}

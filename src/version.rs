@@ -32,3 +32,25 @@ impl Display for Version {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default() {
+        assert_eq!(Version::default(), Version::V2023_06_01);
+    }
+
+    #[test]
+    fn display() {
+        assert_eq!(
+            Version::V2023_01_01.to_string(),
+            "2023-01-01",
+        );
+        assert_eq!(
+            Version::V2023_06_01.to_string(),
+            "2023-06-01",
+        );
+    }
+}

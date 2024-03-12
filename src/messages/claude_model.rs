@@ -52,3 +52,66 @@ impl_enum_string_serialization!(
     Claude3Opus20240229 => "claude-3-opus-20240229",
     Claude3Sonnet20240229 => "claude-3-sonnet-20240229"
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default() {
+        assert_eq!(
+            ClaudeModel::default(),
+            ClaudeModel::Claude3Sonnet20240229
+        );
+    }
+
+    #[test]
+    fn display() {
+        assert_eq!(
+            ClaudeModel::Claude3Opus20240229.to_string(),
+            "claude-3-opus-20240229"
+        );
+        assert_eq!(
+            ClaudeModel::Claude3Sonnet20240229.to_string(),
+            "claude-3-sonnet-20240229"
+        );
+    }
+
+    #[test]
+    fn max_tokens() {
+        assert_eq!(
+            ClaudeModel::Claude3Opus20240229.max_tokens(),
+            4096
+        );
+        assert_eq!(
+            ClaudeModel::Claude3Sonnet20240229.max_tokens(),
+            4096
+        );
+    }
+
+    #[test]
+    fn serialize() {
+        assert_eq!(
+            serde_json::from_str::<ClaudeModel>("\"claude-3-opus-20240229\"")
+                .unwrap(),
+            ClaudeModel::Claude3Opus20240229
+        );
+        assert_eq!(
+            serde_json::from_str::<ClaudeModel>("\"claude-3-sonnet-20240229\"")
+                .unwrap(),
+            ClaudeModel::Claude3Sonnet20240229
+        );
+    }
+
+    #[test]
+    fn deserialize() {
+        assert_eq!(
+            serde_json::to_string(&ClaudeModel::Claude3Opus20240229).unwrap(),
+            "\"claude-3-opus-20240229\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ClaudeModel::Claude3Sonnet20240229).unwrap(),
+            "\"claude-3-sonnet-20240229\""
+        );
+    }
+}

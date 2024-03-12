@@ -27,3 +27,14 @@ impl ApiKey {
         &self.value
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let api_key = ApiKey::new("api-key");
+        assert_eq!(api_key.value, "api-key");
+    }
+}

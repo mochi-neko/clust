@@ -60,3 +60,52 @@ impl Temperature {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let temperature = Temperature::new(0.5);
+        assert_eq!(temperature.unwrap().value, 0.5);
+    }
+
+    #[test]
+    fn validate() {
+        assert!(Temperature::new(-0.1).is_err());
+        assert!(Temperature::new(0.0).is_ok());
+        assert!(Temperature::new(0.5).is_ok());
+        assert!(Temperature::new(1.0).is_ok());
+        assert!(Temperature::new(1.1).is_err());
+    }
+
+    #[test]
+    fn default() {
+        assert_eq!(Temperature::default().value, 1.0);
+    }
+
+    #[test]
+    fn display() {
+        let temperature = Temperature::new(0.5).unwrap();
+        assert_eq!(temperature.to_string(), "0.5");
+    }
+
+    #[test]
+    fn serialize() {
+        let temperature = Temperature::new(0.5).unwrap();
+        assert_eq!(
+            serde_json::to_string(&temperature).unwrap(),
+            "0.5"
+        );
+    }
+
+    #[test]
+    fn deserialize() {
+        let temperature = Temperature::new(0.5).unwrap();
+        assert_eq!(
+            serde_json::from_str::<Temperature>("0.5").unwrap(),
+            temperature
+        );
+    }
+}

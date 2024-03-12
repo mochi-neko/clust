@@ -26,3 +26,35 @@ pub struct Usage {
 }
 
 impl_display_for_serialize!(Usage);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize() {
+        let usage = Usage {
+            input_tokens: 1,
+            output_tokens: 2,
+        };
+        assert_eq!(
+            serde_json::to_string(&usage).unwrap(),
+            r#"{"input_tokens":1,"output_tokens":2}"#
+        );
+    }
+
+    #[test]
+    fn deserialize() {
+        let usage = Usage {
+            input_tokens: 1,
+            output_tokens: 2,
+        };
+        assert_eq!(
+            serde_json::from_str::<Usage>(
+                r#"{"input_tokens":1,"output_tokens":2}"#
+            )
+            .unwrap(),
+            usage
+        );
+    }
+}

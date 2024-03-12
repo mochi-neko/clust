@@ -59,3 +59,55 @@ impl TopP {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        let top_p = TopP::new(1.0);
+        assert_eq!(top_p.unwrap().value, 1.0);
+    }
+
+    #[test]
+    fn validate() {
+        assert!(TopP::new(-0.1).is_err());
+        assert!(TopP::new(0.0).is_ok());
+        assert!(TopP::new(0.5).is_ok());
+        assert!(TopP::new(1.0).is_ok());
+        assert!(TopP::new(1.1).is_err());
+    }
+
+    #[test]
+    fn default() {
+        assert_eq!(TopP::default().value, 1.0);
+    }
+
+    #[test]
+    fn display() {
+        let top_p = TopP::new(1.0);
+        assert_eq!(
+            top_p.unwrap().to_string(),
+            "1"
+        );
+    }
+
+    #[test]
+    fn serialize() {
+        let top_p = TopP::new(1.0);
+        assert_eq!(
+            serde_json::to_string(&top_p.unwrap()).unwrap(),
+            "1.0"
+        );
+    }
+    
+    #[test]
+    fn deserialize() {
+        let top_p = TopP::new(1.0);
+        assert_eq!(
+            serde_json::from_str::<TopP>("1.0").unwrap(),
+            top_p.unwrap()
+        );
+    }
+}

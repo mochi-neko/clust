@@ -53,3 +53,73 @@ pub struct MessagesResponseBody {
 }
 
 impl_display_for_serialize!(MessagesResponseBody);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize() {
+        let response = MessagesResponseBody {
+            id: "id".to_string(),
+            _type: "type".to_string(),
+            role: Role::Assistant,
+            content: "content".into(),
+            model: ClaudeModel::Claude3Sonnet20240229,
+            stop_reason: Some(StopReason::EndTurn),
+            stop_sequence: Some(StopSequence::new("stop_sequence")),
+            usage: Usage {
+                input_tokens: 1,
+                output_tokens: 2,
+            },
+        };
+        assert_eq!(
+            serde_json::to_string(&response).unwrap(),
+            "{\"id\":\"id\",\"type\":\"type\",\"role\":\"assistant\",\"content\":\"content\",\"model\":\"claude-3-sonnet-20240229\",\"stop_reason\":\"end_turn\",\"stop_sequence\":\"stop_sequence\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}"
+        );
+    }
+
+    #[test]
+    fn deserialize() {
+        let response = MessagesResponseBody {
+            id: "id".to_string(),
+            _type: "type".to_string(),
+            role: Role::Assistant,
+            content: "content".into(),
+            model: ClaudeModel::Claude3Sonnet20240229,
+            stop_reason: Some(StopReason::EndTurn),
+            stop_sequence: Some(StopSequence::new("stop_sequence")),
+            usage: Usage {
+                input_tokens: 1,
+                output_tokens: 2,
+            },
+        };
+        assert_eq!(
+            serde_json::from_str::<MessagesResponseBody>(
+            "{\"id\":\"id\",\"type\":\"type\",\"role\":\"assistant\",\"content\":\"content\",\"model\":\"claude-3-sonnet-20240229\",\"stop_reason\":\"end_turn\",\"stop_sequence\":\"stop_sequence\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}"
+            ).unwrap(),
+            response
+        );
+    }
+    
+    #[test]
+    fn display() {
+        let response = MessagesResponseBody {
+            id: "id".to_string(),
+            _type: "type".to_string(),
+            role: Role::Assistant,
+            content: "content".into(),
+            model: ClaudeModel::Claude3Sonnet20240229,
+            stop_reason: Some(StopReason::EndTurn),
+            stop_sequence: Some(StopSequence::new("stop_sequence")),
+            usage: Usage {
+                input_tokens: 1,
+                output_tokens: 2,
+            },
+        };
+        assert_eq!(
+            response.to_string(),
+            "{\n  \"id\": \"id\",\n  \"type\": \"type\",\n  \"role\": \"assistant\",\n  \"content\": \"content\",\n  \"model\": \"claude-3-sonnet-20240229\",\n  \"stop_reason\": \"end_turn\",\n  \"stop_sequence\": \"stop_sequence\",\n  \"usage\": {\n    \"input_tokens\": 1,\n    \"output_tokens\": 2\n  }\n}"
+        );
+    }
+}
