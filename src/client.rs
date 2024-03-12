@@ -22,6 +22,17 @@ impl Client {
     /// - `api_key` - The API key.
     /// - `version` - The API version.
     /// - `client` - A HTTP client.
+    ///
+    /// ## Example
+    /// ```
+    /// use clust::Client;
+    ///
+    /// let api_key = clust::ApiKey::new("api-key");
+    /// let version = clust::Version::V2023_06_01;
+    /// let client = clust::reqwest::Client::new();
+    ///
+    /// let client = Client::new(api_key, version, client);
+    /// ```
     pub fn new(
         api_key: ApiKey,
         version: Version,
@@ -34,13 +45,40 @@ impl Client {
         }
     }
 
-    /// Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
+    /// Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY` and default options.
+    ///
+    /// ## Example
+    /// ```
+    /// use clust::Client;
+    ///
+    /// let client = Client::from_env().unwrap();
+    /// ```
     pub fn from_env() -> Result<Self, std::env::VarError> {
         let api_key = ApiKey::from_env()?;
         let version = Version::default();
         let client = reqwest::Client::new();
 
         Ok(Self::new(api_key, version, client))
+    }
+
+    /// Create a new API client with the API key and default options.
+    ///
+    /// ## Arguments
+    /// - `api_key` - The API key.
+    ///
+    /// ## Example
+    /// ```
+    /// use clust::Client;
+    ///
+    /// let api_key = clust::ApiKey::new("api-key");
+    ///
+    /// let client = Client::from_api_key(api_key);
+    /// ```
+    pub fn from_api_key(api_key: ApiKey) -> Self {
+        let version = Version::default();
+        let client = reqwest::Client::new();
+
+        Self::new(api_key, version, client)
     }
 
     /// Create a request builder for the `POST` method.

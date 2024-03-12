@@ -1,3 +1,10 @@
+//! The error types of the API calling.
+//!
+//! - Validation error of the request -> [`crate::ValidationError`])
+//! - Error of the client API calling -> [`crate::ClientError`]
+//! - Error of the API server -> [`crate::ApiError`]
+//! - A unique error for the API -> Each API error.
+
 use crate::macros::impl_display_for_serialize;
 use reqwest::StatusCode;
 use std::fmt::Display;

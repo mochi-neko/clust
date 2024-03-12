@@ -1,3 +1,5 @@
+//! The [Messages API](https://docs.anthropic.com/claude/reference/messages_post) implementations.
+
 mod claude_model;
 mod content;
 mod error;
