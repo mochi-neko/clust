@@ -12,7 +12,7 @@ pub(crate) async fn create_a_message(
 ) -> MessagesResult<MessagesResponseBody> {
     // Validate stream option.
     if let Some(stream) = &request_body.stream {
-        if *stream == StreamOption::ReturnStream {
+        if *stream != StreamOption::ReturnOnce {
             return Err(MessagesError::StreamOptionMismatch);
         }
     }
