@@ -48,7 +48,7 @@ impl Client {
     /// Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY` and default options.
     ///
     /// ## Example
-    /// ```
+    /// ```no_run
     /// use clust::Client;
     ///
     /// let client = Client::from_env().unwrap();
