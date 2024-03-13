@@ -17,12 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add the `Streaming Messages` API.
 
+### Changed
+
+- Improve type annotation of the `type` field in the `MessagesRespponseBody`.
+
 ## [0.1.0] - 2024-03-12
 
 ### Added
 
 - Add the `Create a Message` API.
 
-[unreleased]: https://github.com/mochi-neko/clust/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/mochi-neko/clust/compare/v0.2.0...HEAD
+
+[0.2.0]: https://github.com/mochi-neko/clust/compare/v0.1.0...v0.2.0
 
 [0.1.0]: https://github.com/mochi-neko/clust/releases/tag/v0.1.0
