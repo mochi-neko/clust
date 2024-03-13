@@ -27,6 +27,22 @@ impl Display for SystemPrompt {
     }
 }
 
+impl From<String> for SystemPrompt {
+    fn from(value: String) -> Self {
+        Self {
+            value,
+        }
+    }
+}
+
+impl From<&str> for SystemPrompt {
+    fn from(value: &str) -> Self {
+        Self {
+            value: value.to_string(),
+        }
+    }
+}
+
 impl SystemPrompt {
     /// Creates a new system prompt.
     pub fn new<S>(value: S) -> Self
@@ -48,7 +64,7 @@ mod tests {
         let system_prompt = SystemPrompt::new("system-prompt");
         assert_eq!(system_prompt.value, "system-prompt");
     }
-    
+
     #[test]
     fn default() {
         assert_eq!(SystemPrompt::default().value, "");

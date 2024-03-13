@@ -1,7 +1,7 @@
 use crate::macros::impl_display_for_serialize;
 use crate::messages::{Content, Role};
 
-/// The input message.
+/// The message.
 #[derive(
     Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
 )]

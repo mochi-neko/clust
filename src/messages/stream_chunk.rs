@@ -14,19 +14,19 @@ use crate::messages::{
 #[derive(Debug, Clone, PartialEq)]
 pub enum StreamChunk {
     /// Message start chunk.
-    MessageStart(MessageStart),
+    MessageStart(MessageStartChunk),
     /// Content block start chunk.
-    ContentBlockStart(ContentBlockStart),
+    ContentBlockStart(ContentBlockStartChunk),
     /// Ping chunk.
-    Ping(Ping),
+    Ping(PingChunk),
     /// Content block delta chunk.
-    ContentBlockDelta(ContentBlockDelta),
+    ContentBlockDelta(ContentBlockDeltaChunk),
     /// Content block stop chunk.
-    ContentBlockStop(ContentBlockStop),
+    ContentBlockStop(ContentBlockStopChunk),
     /// Message delta chunk.
-    MessageDelta(MessageDelta),
+    MessageDelta(MessageDeltaChunk),
     /// Message stop chunk.
-    MessageStop(MessageStop),
+    MessageStop(MessageStopChunk),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -290,7 +290,7 @@ impl_enum_string_serialization!(
 
 /// The message start chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct MessageStart {
+pub struct MessageStartChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
     pub _type: StreamChunkType,
@@ -298,7 +298,7 @@ pub struct MessageStart {
     pub message: MessagesResponseBody,
 }
 
-impl Default for MessageStart {
+impl Default for MessageStartChunk {
     fn default() -> Self {
         Self {
             _type: StreamChunkType::MessageStart,
@@ -307,9 +307,9 @@ impl Default for MessageStart {
     }
 }
 
-impl_display_for_serialize!(MessageStart);
+impl_display_for_serialize!(MessageStartChunk);
 
-impl MessageStart {
+impl MessageStartChunk {
     /// Creates a new `MessageStart` instance.
     pub fn new(message: MessagesResponseBody) -> Self {
         Self {
@@ -321,7 +321,7 @@ impl MessageStart {
 
 /// The content block start chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct ContentBlockStart {
+pub struct ContentBlockStartChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
     pub _type: StreamChunkType,
@@ -331,7 +331,7 @@ pub struct ContentBlockStart {
     pub content_block: TextContentBlock,
 }
 
-impl Default for ContentBlockStart {
+impl Default for ContentBlockStartChunk {
     fn default() -> Self {
         Self {
             _type: StreamChunkType::ContentBlockStart,
@@ -341,9 +341,9 @@ impl Default for ContentBlockStart {
     }
 }
 
-impl_display_for_serialize!(ContentBlockStart);
+impl_display_for_serialize!(ContentBlockStartChunk);
 
-impl ContentBlockStart {
+impl ContentBlockStartChunk {
     /// Creates a new `ContentBlockStart` instance.
     pub fn new(
         index: u32,
@@ -359,13 +359,13 @@ impl ContentBlockStart {
 
 /// The ping chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct Ping {
+pub struct PingChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
     pub _type: StreamChunkType,
 }
 
-impl Default for Ping {
+impl Default for PingChunk {
     fn default() -> Self {
         Self {
             _type: StreamChunkType::Ping,
@@ -373,9 +373,9 @@ impl Default for Ping {
     }
 }
 
-impl_display_for_serialize!(Ping);
+impl_display_for_serialize!(PingChunk);
 
-impl Ping {
+impl PingChunk {
     /// Creates a new `Ping` instance.
     pub fn new() -> Self {
         Self {
@@ -386,7 +386,7 @@ impl Ping {
 
 /// The content block delta chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct ContentBlockDelta {
+pub struct ContentBlockDeltaChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
     pub _type: StreamChunkType,
@@ -396,7 +396,7 @@ pub struct ContentBlockDelta {
     pub delta: TextDeltaContentBlock,
 }
 
-impl Default for ContentBlockDelta {
+impl Default for ContentBlockDeltaChunk {
     fn default() -> Self {
         Self {
             _type: StreamChunkType::ContentBlockDelta,
@@ -406,9 +406,9 @@ impl Default for ContentBlockDelta {
     }
 }
 
-impl_display_for_serialize!(ContentBlockDelta);
+impl_display_for_serialize!(ContentBlockDeltaChunk);
 
-impl ContentBlockDelta {
+impl ContentBlockDeltaChunk {
     /// Creates a new `ContentBlockDelta` instance.
     pub fn new(
         index: u32,
@@ -424,7 +424,7 @@ impl ContentBlockDelta {
 
 /// The content block stop chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct ContentBlockStop {
+pub struct ContentBlockStopChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
     pub _type: StreamChunkType,
@@ -432,7 +432,7 @@ pub struct ContentBlockStop {
     pub index: u32,
 }
 
-impl Default for ContentBlockStop {
+impl Default for ContentBlockStopChunk {
     fn default() -> Self {
         Self {
             _type: StreamChunkType::ContentBlockStop,
@@ -441,9 +441,9 @@ impl Default for ContentBlockStop {
     }
 }
 
-impl_display_for_serialize!(ContentBlockStop);
+impl_display_for_serialize!(ContentBlockStopChunk);
 
-impl ContentBlockStop {
+impl ContentBlockStopChunk {
     /// Creates a new `ContentBlockStop` instance.
     pub fn new(index: u32) -> Self {
         Self {
@@ -455,17 +455,17 @@ impl ContentBlockStop {
 
 /// The message delta chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct MessageDelta {
+pub struct MessageDeltaChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
     pub _type: StreamChunkType,
     /// The result of this stream.
-    pub delta: StreamResult,
+    pub delta: StreamStop,
     /// The billing and rate-limit usage of this stream.
     pub usage: DeltaUsage,
 }
 
-impl Default for MessageDelta {
+impl Default for MessageDeltaChunk {
     fn default() -> Self {
         Self {
             _type: StreamChunkType::MessageDelta,
@@ -475,12 +475,12 @@ impl Default for MessageDelta {
     }
 }
 
-impl_display_for_serialize!(MessageDelta);
+impl_display_for_serialize!(MessageDeltaChunk);
 
-impl MessageDelta {
+impl MessageDeltaChunk {
     /// Creates a new `MessageDelta` instance.
     pub fn new(
-        delta: StreamResult,
+        delta: StreamStop,
         usage: DeltaUsage,
     ) -> Self {
         Self {
@@ -493,13 +493,13 @@ impl MessageDelta {
 
 /// The message stop chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct MessageStop {
+pub struct MessageStopChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
     pub _type: StreamChunkType,
 }
 
-impl Default for MessageStop {
+impl Default for MessageStopChunk {
     fn default() -> Self {
         Self {
             _type: StreamChunkType::MessageStop,
@@ -507,9 +507,9 @@ impl Default for MessageStop {
     }
 }
 
-impl_display_for_serialize!(MessageStop);
+impl_display_for_serialize!(MessageStopChunk);
 
-impl MessageStop {
+impl MessageStopChunk {
     /// Creates a new `MessageStop` instance.
     pub fn new() -> Self {
         Self {
@@ -518,18 +518,18 @@ impl MessageStop {
     }
 }
 
-/// The stream result information.
+/// The stream stop information.
 #[derive(
     Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
 )]
-pub struct StreamResult {
+pub struct StreamStop {
     /// The stop reason of this stream.
     pub stop_reason: Option<StopReason>,
     /// The stop sequence of this stream.
     pub stop_sequence: Option<StopSequence>,
 }
 
-impl_display_for_serialize!(StreamResult);
+impl_display_for_serialize!(StreamStop);
 
 /// The delta usage of the stream.
 #[derive(
@@ -734,10 +734,10 @@ mod tests {
     }
 
     #[test]
-    fn default_stream_result() {
+    fn default_stream_stop() {
         assert_eq!(
-            StreamResult::default(),
-            StreamResult {
+            StreamStop::default(),
+            StreamStop {
                 stop_reason: Default::default(),
                 stop_sequence: Default::default(),
             }
@@ -745,49 +745,49 @@ mod tests {
     }
 
     #[test]
-    fn display_stream_result() {
-        let stream_result = StreamResult {
+    fn display_stream_stop() {
+        let stop = StreamStop {
             stop_reason: Some(StopReason::EndTurn),
             stop_sequence: Some(StopSequence::new("stop_sequence")),
         };
         assert_eq!(
-            stream_result.to_string(),
+            stop.to_string(),
             "{\n  \"stop_reason\": \"end_turn\",\n  \"stop_sequence\": \"stop_sequence\"\n}"
         );
     }
 
     #[test]
-    fn serialize_stream_result() {
-        let stream_result = StreamResult {
+    fn serialize_stream_stop() {
+        let stop = StreamStop {
             stop_reason: Some(StopReason::EndTurn),
             stop_sequence: Some(StopSequence::new("stop_sequence")),
         };
         assert_eq!(
-            serde_json::to_string(&stream_result).unwrap(),
+            serde_json::to_string(&stop).unwrap(),
             r#"{"stop_reason":"end_turn","stop_sequence":"stop_sequence"}"#
         );
     }
 
     #[test]
-    fn deserialize_stream_result() {
-        let stream_result = StreamResult {
+    fn deserialize_stream_stop() {
+        let stop = StreamStop {
             stop_reason: Some(StopReason::EndTurn),
             stop_sequence: Some(StopSequence::new("stop_sequence")),
         };
         assert_eq!(
-            serde_json::from_str::<StreamResult>(
+            serde_json::from_str::<StreamStop>(
                 r#"{"stop_reason":"end_turn","stop_sequence":"stop_sequence"}"#
             )
             .unwrap(),
-            stream_result
+            stop
         );
     }
 
     #[test]
     fn default_message_start() {
         assert_eq!(
-            MessageStart::default(),
-            MessageStart {
+            MessageStartChunk::default(),
+            MessageStartChunk {
                 _type: StreamChunkType::MessageStart,
                 message: Default::default(),
             }
@@ -796,11 +796,11 @@ mod tests {
 
     #[test]
     fn display_message_start() {
-        let message_start = MessageStart {
+        let message_start = MessageStartChunk {
             _type: StreamChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
-                _type: "type".to_string(),
+                _type: MessageObjectType::Message,
                 role: Role::Assistant,
                 content: "content".into(),
                 model: ClaudeModel::Claude3Sonnet20240229,
@@ -814,17 +814,17 @@ mod tests {
         };
         assert_eq!(
             message_start.to_string(),
-            "{\n  \"type\": \"message_start\",\n  \"message\": {\n    \"id\": \"id\",\n    \"type\": \"type\",\n    \"role\": \"assistant\",\n    \"content\": \"content\",\n    \"model\": \"claude-3-sonnet-20240229\",\n    \"stop_reason\": \"end_turn\",\n    \"stop_sequence\": \"stop_sequence\",\n    \"usage\": {\n      \"input_tokens\": 1,\n      \"output_tokens\": 2\n    }\n  }\n}"
+            "{\n  \"type\": \"message_start\",\n  \"message\": {\n    \"id\": \"id\",\n    \"type\": \"message\",\n    \"role\": \"assistant\",\n    \"content\": \"content\",\n    \"model\": \"claude-3-sonnet-20240229\",\n    \"stop_reason\": \"end_turn\",\n    \"stop_sequence\": \"stop_sequence\",\n    \"usage\": {\n      \"input_tokens\": 1,\n      \"output_tokens\": 2\n    }\n  }\n}"
         );
     }
 
     #[test]
     fn serialize_message_start() {
-        let message_start = MessageStart {
+        let message_start = MessageStartChunk {
             _type: StreamChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
-                _type: "type".to_string(),
+                _type: MessageObjectType::Message,
                 role: Role::Assistant,
                 content: "content".into(),
                 model: ClaudeModel::Claude3Sonnet20240229,
@@ -838,17 +838,17 @@ mod tests {
         };
         assert_eq!(
             serde_json::to_string(&message_start).unwrap(),
-            r#"{"type":"message_start","message":{"id":"id","type":"type","role":"assistant","content":"content","model":"claude-3-sonnet-20240229","stop_reason":"end_turn","stop_sequence":"stop_sequence","usage":{"input_tokens":1,"output_tokens":2}}}"#
+            r#"{"type":"message_start","message":{"id":"id","type":"message","role":"assistant","content":"content","model":"claude-3-sonnet-20240229","stop_reason":"end_turn","stop_sequence":"stop_sequence","usage":{"input_tokens":1,"output_tokens":2}}}"#
         );
     }
 
     #[test]
     fn deserialize_message_start() {
-        let message_start = MessageStart {
+        let message_start = MessageStartChunk {
             _type: StreamChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
-                _type: "type".to_string(),
+                _type: MessageObjectType::Message,
                 role: Role::Assistant,
                 content: "content".into(),
                 model: ClaudeModel::Claude3Sonnet20240229,
@@ -861,8 +861,8 @@ mod tests {
             },
         };
         assert_eq!(
-            serde_json::from_str::<MessageStart>(
-                r#"{"type":"message_start","message":{"id":"id","type":"type","role":"assistant","content":"content","model":"claude-3-sonnet-20240229","stop_reason":"end_turn","stop_sequence":"stop_sequence","usage":{"input_tokens":1,"output_tokens":2}}}"#
+            serde_json::from_str::<MessageStartChunk>(
+                r#"{"type":"message_start","message":{"id":"id","type":"message","role":"assistant","content":"content","model":"claude-3-sonnet-20240229","stop_reason":"end_turn","stop_sequence":"stop_sequence","usage":{"input_tokens":1,"output_tokens":2}}}"#
             )
             .unwrap(),
             message_start
@@ -872,8 +872,8 @@ mod tests {
     #[test]
     fn default_content_block_start() {
         assert_eq!(
-            ContentBlockStart::default(),
-            ContentBlockStart {
+            ContentBlockStartChunk::default(),
+            ContentBlockStartChunk {
                 _type: StreamChunkType::ContentBlockStart,
                 index: Default::default(),
                 content_block: Default::default(),
@@ -883,7 +883,7 @@ mod tests {
 
     #[test]
     fn display_content_block_start() {
-        let content_block_start = ContentBlockStart {
+        let content_block_start = ContentBlockStartChunk {
             _type: StreamChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
@@ -899,7 +899,7 @@ mod tests {
 
     #[test]
     fn serialize_content_block_start() {
-        let content_block_start = ContentBlockStart {
+        let content_block_start = ContentBlockStartChunk {
             _type: StreamChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
@@ -915,7 +915,7 @@ mod tests {
 
     #[test]
     fn deserialize_content_block_start() {
-        let content_block_start = ContentBlockStart {
+        let content_block_start = ContentBlockStartChunk {
             _type: StreamChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
@@ -924,7 +924,7 @@ mod tests {
             },
         };
         assert_eq!(
-            serde_json::from_str::<ContentBlockStart>(
+            serde_json::from_str::<ContentBlockStartChunk>(
                 "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"text\"}}"
             )
             .unwrap(),
@@ -935,8 +935,8 @@ mod tests {
     #[test]
     fn default_ping() {
         assert_eq!(
-            Ping::default(),
-            Ping {
+            PingChunk::default(),
+            PingChunk {
                 _type: StreamChunkType::Ping,
             }
         );
@@ -944,7 +944,7 @@ mod tests {
 
     #[test]
     fn display_ping() {
-        let ping = Ping::default();
+        let ping = PingChunk::default();
         assert_eq!(
             ping.to_string(),
             "{\n  \"type\": \"ping\"\n}"
@@ -953,7 +953,7 @@ mod tests {
 
     #[test]
     fn serialize_ping() {
-        let ping = Ping::default();
+        let ping = PingChunk::default();
         assert_eq!(
             serde_json::to_string(&ping).unwrap(),
             r#"{"type":"ping"}"#
@@ -962,9 +962,9 @@ mod tests {
 
     #[test]
     fn deserialize_ping() {
-        let ping = Ping::default();
+        let ping = PingChunk::default();
         assert_eq!(
-            serde_json::from_str::<Ping>(r#"{"type":"ping"}"#).unwrap(),
+            serde_json::from_str::<PingChunk>(r#"{"type":"ping"}"#).unwrap(),
             ping
         );
     }
@@ -972,8 +972,8 @@ mod tests {
     #[test]
     fn default_content_block_delta() {
         assert_eq!(
-            ContentBlockDelta::default(),
-            ContentBlockDelta {
+            ContentBlockDeltaChunk::default(),
+            ContentBlockDeltaChunk {
                 _type: StreamChunkType::ContentBlockDelta,
                 index: Default::default(),
                 delta: Default::default(),
@@ -983,7 +983,7 @@ mod tests {
 
     #[test]
     fn display_content_block_delta() {
-        let content_block_delta = ContentBlockDelta {
+        let content_block_delta = ContentBlockDeltaChunk {
             _type: StreamChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
@@ -999,7 +999,7 @@ mod tests {
 
     #[test]
     fn serialize_content_block_delta() {
-        let content_block_delta = ContentBlockDelta {
+        let content_block_delta = ContentBlockDeltaChunk {
             _type: StreamChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
@@ -1015,7 +1015,7 @@ mod tests {
 
     #[test]
     fn deserialize_content_block_delta() {
-        let content_block_delta = ContentBlockDelta {
+        let content_block_delta = ContentBlockDeltaChunk {
             _type: StreamChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
@@ -1024,7 +1024,7 @@ mod tests {
             },
         };
         assert_eq!(
-            serde_json::from_str::<ContentBlockDelta>(
+            serde_json::from_str::<ContentBlockDeltaChunk>(
                 "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"text\"}}"
             )
             .unwrap(),
@@ -1035,8 +1035,8 @@ mod tests {
     #[test]
     fn default_content_block_stop() {
         assert_eq!(
-            ContentBlockStop::default(),
-            ContentBlockStop {
+            ContentBlockStopChunk::default(),
+            ContentBlockStopChunk {
                 _type: StreamChunkType::ContentBlockStop,
                 index: Default::default(),
             }
@@ -1045,7 +1045,7 @@ mod tests {
 
     #[test]
     fn display_content_block_stop() {
-        let content_block_stop = ContentBlockStop {
+        let content_block_stop = ContentBlockStopChunk {
             _type: StreamChunkType::ContentBlockStop,
             index: 1,
         };
@@ -1057,7 +1057,7 @@ mod tests {
 
     #[test]
     fn serialize_content_block_stop() {
-        let content_block_stop = ContentBlockStop {
+        let content_block_stop = ContentBlockStopChunk {
             _type: StreamChunkType::ContentBlockStop,
             index: 1,
         };
@@ -1069,12 +1069,12 @@ mod tests {
 
     #[test]
     fn deserialize_content_block_stop() {
-        let content_block_stop = ContentBlockStop {
+        let content_block_stop = ContentBlockStopChunk {
             _type: StreamChunkType::ContentBlockStop,
             index: 1,
         };
         assert_eq!(
-            serde_json::from_str::<ContentBlockStop>(
+            serde_json::from_str::<ContentBlockStopChunk>(
                 r#"{"type":"content_block_stop","index":1}"#
             )
             .unwrap(),
@@ -1085,8 +1085,8 @@ mod tests {
     #[test]
     fn default_message_delta() {
         assert_eq!(
-            MessageDelta::default(),
-            MessageDelta {
+            MessageDeltaChunk::default(),
+            MessageDeltaChunk {
                 _type: StreamChunkType::MessageDelta,
                 delta: Default::default(),
                 usage: Default::default(),
@@ -1096,9 +1096,9 @@ mod tests {
 
     #[test]
     fn display_message_delta() {
-        let message_delta = MessageDelta {
+        let message_delta = MessageDeltaChunk {
             _type: StreamChunkType::MessageDelta,
-            delta: StreamResult {
+            delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
             },
@@ -1114,9 +1114,9 @@ mod tests {
 
     #[test]
     fn serialize_message_delta() {
-        let message_delta = MessageDelta {
+        let message_delta = MessageDeltaChunk {
             _type: StreamChunkType::MessageDelta,
-            delta: StreamResult {
+            delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
             },
@@ -1132,9 +1132,9 @@ mod tests {
 
     #[test]
     fn deserialize_message_delta() {
-        let message_delta = MessageDelta {
+        let message_delta = MessageDeltaChunk {
             _type: StreamChunkType::MessageDelta,
-            delta: StreamResult {
+            delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
             },
@@ -1143,7 +1143,7 @@ mod tests {
             },
         };
         assert_eq!(
-            serde_json::from_str::<MessageDelta>(
+            serde_json::from_str::<MessageDeltaChunk>(
                 r#"{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":"stop_sequence"},"usage":{"output_tokens":1}}"#
             )
             .unwrap(),
@@ -1154,8 +1154,8 @@ mod tests {
     #[test]
     fn default_message_stop() {
         assert_eq!(
-            MessageStop::default(),
-            MessageStop {
+            MessageStopChunk::default(),
+            MessageStopChunk {
                 _type: StreamChunkType::MessageStop,
             }
         );
@@ -1163,7 +1163,7 @@ mod tests {
 
     #[test]
     fn display_message_stop() {
-        let message_stop = MessageStop::default();
+        let message_stop = MessageStopChunk::default();
         assert_eq!(
             message_stop.to_string(),
             "{\n  \"type\": \"message_stop\"\n}"
@@ -1172,7 +1172,7 @@ mod tests {
 
     #[test]
     fn serialize_message_stop() {
-        let message_stop = MessageStop::default();
+        let message_stop = MessageStopChunk::default();
         assert_eq!(
             serde_json::to_string(&message_stop).unwrap(),
             r#"{"type":"message_stop"}"#
@@ -1181,21 +1181,23 @@ mod tests {
 
     #[test]
     fn deserialize_message_stop() {
-        let message_stop = MessageStop::default();
+        let message_stop = MessageStopChunk::default();
         assert_eq!(
-            serde_json::from_str::<MessageStop>(r#"{"type":"message_stop"}"#)
-                .unwrap(),
+            serde_json::from_str::<MessageStopChunk>(
+                r#"{"type":"message_stop"}"#
+            )
+            .unwrap(),
             message_stop
         );
     }
 
     #[test]
     fn display_stream_chunk() {
-        let message_start = MessageStart {
+        let message_start = MessageStartChunk {
             _type: StreamChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
-                _type: "type".to_string(),
+                _type: MessageObjectType::Message,
                 role: Role::Assistant,
                 content: "content".into(),
                 model: ClaudeModel::Claude3Sonnet20240229,
@@ -1207,7 +1209,7 @@ mod tests {
                 },
             },
         };
-        let content_block_start = ContentBlockStart {
+        let content_block_start = ContentBlockStartChunk {
             _type: StreamChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
@@ -1215,8 +1217,8 @@ mod tests {
                 ..Default::default()
             },
         };
-        let ping = Ping::default();
-        let content_block_delta = ContentBlockDelta {
+        let ping = PingChunk::default();
+        let content_block_delta = ContentBlockDeltaChunk {
             _type: StreamChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
@@ -1224,13 +1226,13 @@ mod tests {
                 ..Default::default()
             },
         };
-        let content_block_stop = ContentBlockStop {
+        let content_block_stop = ContentBlockStopChunk {
             _type: StreamChunkType::ContentBlockStop,
             index: 1,
         };
-        let message_delta = MessageDelta {
+        let message_delta = MessageDeltaChunk {
             _type: StreamChunkType::MessageDelta,
-            delta: StreamResult {
+            delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
             },
@@ -1238,11 +1240,11 @@ mod tests {
                 output_tokens: 1,
             },
         };
-        let message_stop = MessageStop::default();
+        let message_stop = MessageStopChunk::default();
 
         assert_eq!(
             StreamChunk::MessageStart(message_start).to_string(),
-            "event: message_start\ndata: {\"type\": \"message_start\", \"message\": {\"id\": \"id\", \"type\": \"type\", \"role\": \"assistant\", \"content\": \"content\", \"model\": \"claude-3-sonnet-20240229\", \"stop_reason\": \"end_turn\", \"stop_sequence\": \"stop_sequence\", \"usage\": {\"input_tokens\": 1, \"output_tokens\": 2}}}"
+            "event: message_start\ndata: {\"type\": \"message_start\", \"message\": {\"id\": \"id\", \"type\": \"message\", \"role\": \"assistant\", \"content\": \"content\", \"model\": \"claude-3-sonnet-20240229\", \"stop_reason\": \"end_turn\", \"stop_sequence\": \"stop_sequence\", \"usage\": {\"input_tokens\": 1, \"output_tokens\": 2}}}"
         );
 
         assert_eq!(
@@ -1284,11 +1286,11 @@ mod tests {
 data: {"type": "message_start", "message": {"id": "msg_1nZdL29xx5MUA1yADyHTEsnR8uuvGzszyY", "type": "message", "role": "assistant", "content": [], "model": "claude-3-opus-20240229", "stop_reason": null, "stop_sequence": null, "usage": {"input_tokens": 25, "output_tokens": 1}}}"#
             )
             .unwrap(),
-            StreamChunk::MessageStart(MessageStart {
+            StreamChunk::MessageStart(MessageStartChunk {
                 _type: StreamChunkType::MessageStart,
                 message: MessagesResponseBody {
                     id: "msg_1nZdL29xx5MUA1yADyHTEsnR8uuvGzszyY".to_string(),
-                    _type: "message".to_string(),
+                    _type: MessageObjectType::Message,
                     role: Role::Assistant,
                     content: vec![].into(),
                     model: ClaudeModel::Claude3Opus20240229,
@@ -1305,7 +1307,7 @@ data: {"type": "message_start", "message": {"id": "msg_1nZdL29xx5MUA1yADyHTEsnR8
         assert_eq!(
             StreamChunk::parse(r#"event: content_block_start
 data: {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}"#).unwrap(),
-            StreamChunk::ContentBlockStart(ContentBlockStart {
+            StreamChunk::ContentBlockStart(ContentBlockStartChunk {
                 _type: StreamChunkType::ContentBlockStart,
                 index: 0,
                 content_block: TextContentBlock {
@@ -1321,7 +1323,7 @@ data: {"type": "content_block_start", "index": 0, "content_block": {"type": "tex
 data: {"type": "ping"}"#
             )
             .unwrap(),
-            StreamChunk::Ping(Ping::default())
+            StreamChunk::Ping(PingChunk::default())
         );
 
         assert_eq!(
@@ -1330,7 +1332,7 @@ data: {"type": "ping"}"#
 data: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hello"}}"#
             )
             .unwrap(),
-            StreamChunk::ContentBlockDelta(ContentBlockDelta {
+            StreamChunk::ContentBlockDelta(ContentBlockDeltaChunk {
                 _type: StreamChunkType::ContentBlockDelta,
                 index: 0,
                 delta: TextDeltaContentBlock {
@@ -1346,7 +1348,7 @@ data: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta"
 data: {"type": "content_block_stop", "index": 0}"#
             )
             .unwrap(),
-            StreamChunk::ContentBlockStop(ContentBlockStop {
+            StreamChunk::ContentBlockStop(ContentBlockStopChunk {
                 _type: StreamChunkType::ContentBlockStop,
                 index: 0,
             })
@@ -1358,9 +1360,9 @@ data: {"type": "content_block_stop", "index": 0}"#
 data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": null}, "usage": {"output_tokens": 15}}"#
             )
             .unwrap(),
-            StreamChunk::MessageDelta(MessageDelta {
+            StreamChunk::MessageDelta(MessageDeltaChunk {
                 _type: StreamChunkType::MessageDelta,
-                delta: StreamResult {
+                delta: StreamStop {
                     stop_reason: Some(StopReason::EndTurn),
                     stop_sequence: None,
                 },
@@ -1376,7 +1378,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
 data: {"type": "message_stop"}"#
             )
             .unwrap(),
-            StreamChunk::MessageStop(MessageStop::default())
+            StreamChunk::MessageStop(MessageStopChunk::default())
         );
 
         assert!(matches!(

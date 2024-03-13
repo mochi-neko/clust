@@ -157,10 +157,10 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             | StreamChunk::MessageStart(message_start) => {
                 assert_eq!(
                     message_start,
-                    MessageStart::new(MessagesResponseBody {
+                    MessageStartChunk::new(MessagesResponseBody {
                         id: "msg_1nZdL29xx5MUA1yADyHTEsnR8uuvGzszyY"
                             .to_string(),
-                        _type: "message".to_string(),
+                        _type: MessageObjectType::Message,
                         role: Role::Assistant,
                         content: vec![].into(),
                         model: ClaudeModel::Claude3Opus20240229,
@@ -185,7 +185,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             | StreamChunk::ContentBlockStart(content_block_start) => {
                 assert_eq!(
                     content_block_start,
-                    ContentBlockStart::new(0, "".into()),
+                    ContentBlockStartChunk::new(0, "".into()),
                 );
             },
             | _ => panic!("unexpected chunk type"),
@@ -198,7 +198,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap();
         match chunk {
             | StreamChunk::Ping(ping) => {
-                assert_eq!(ping, Ping::new());
+                assert_eq!(ping, PingChunk::new());
             },
             | _ => panic!("unexpected chunk type"),
         }
@@ -212,7 +212,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             | StreamChunk::ContentBlockDelta(content_block_delta) => {
                 assert_eq!(
                     content_block_delta,
-                    ContentBlockDelta::new(0, "Hello".into()),
+                    ContentBlockDeltaChunk::new(0, "Hello".into()),
                 );
             },
             | _ => panic!("unexpected chunk type"),
@@ -227,7 +227,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             | StreamChunk::ContentBlockDelta(content_block_delta) => {
                 assert_eq!(
                     content_block_delta,
-                    ContentBlockDelta::new(0, "!".into()),
+                    ContentBlockDeltaChunk::new(0, "!".into()),
                 );
             },
             | _ => panic!("unexpected chunk type"),
@@ -242,7 +242,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             | StreamChunk::ContentBlockStop(content_block_stop) => {
                 assert_eq!(
                     content_block_stop,
-                    ContentBlockStop::new(0),
+                    ContentBlockStopChunk::new(0),
                 );
             },
             | _ => panic!("unexpected chunk type"),
@@ -257,8 +257,8 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             | StreamChunk::MessageDelta(message_delta) => {
                 assert_eq!(
                     message_delta,
-                    MessageDelta::new(
-                        StreamResult {
+                    MessageDeltaChunk::new(
+                        StreamStop {
                             stop_reason: Some(StopReason::EndTurn),
                             stop_sequence: None,
                         },

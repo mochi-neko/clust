@@ -177,7 +177,7 @@ impl Client {
     ///         ..Default::default()
     ///     };
     ///
-    ///     let stream = client
+    ///     let mut stream = client
     ///         .create_a_message_stream(request_body)
     ///         .await?;
     ///

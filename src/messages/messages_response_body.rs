@@ -1,12 +1,17 @@
-use crate::macros::impl_display_for_serialize;
+use crate::macros::{
+    impl_display_for_serialize, impl_enum_string_serialization,
+};
 use crate::messages::{
     ClaudeModel, Content, Role, StopReason, StopSequence, Usage,
 };
+use std::fmt::{Display, Formatter};
 
 /// The response body for the Messages API.
 ///
 /// See also [the Messages API](https://docs.anthropic.com/claude/reference/messages_post).
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
+)]
 pub struct MessagesResponseBody {
     /// Unique object identifier.
     ///
@@ -16,7 +21,7 @@ pub struct MessagesResponseBody {
     ///
     /// For Messages, this is always "message".
     #[serde(rename = "type")]
-    pub _type: String,
+    pub _type: MessageObjectType,
     /// Conversational role of the generated message.
     ///
     /// This will always be "assistant".
@@ -52,22 +57,36 @@ pub struct MessagesResponseBody {
     pub usage: Usage,
 }
 
-impl Default for MessagesResponseBody {
+impl_display_for_serialize!(MessagesResponseBody);
+
+/// The object type for message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MessageObjectType {
+    /// message
+    Message,
+}
+
+impl Default for MessageObjectType {
     fn default() -> Self {
-        Self {
-            id: Default::default(),
-            _type: "message".to_string(),
-            role: Default::default(),
-            content: Default::default(),
-            model: Default::default(),
-            stop_reason: Default::default(),
-            stop_sequence: Default::default(),
-            usage: Default::default(),
+        Self::Message
+    }
+}
+
+impl Display for MessageObjectType {
+    fn fmt(
+        &self,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
+        match self {
+            | MessageObjectType::Message => write!(f, "{}", "message"),
         }
     }
 }
 
-impl_display_for_serialize!(MessagesResponseBody);
+impl_enum_string_serialization!(
+    MessageObjectType,
+    Message => "message"
+);
 
 #[cfg(test)]
 mod tests {
@@ -77,7 +96,7 @@ mod tests {
     fn serialize() {
         let response = MessagesResponseBody {
             id: "id".to_string(),
-            _type: "type".to_string(),
+            _type: MessageObjectType::Message,
             role: Role::Assistant,
             content: "content".into(),
             model: ClaudeModel::Claude3Sonnet20240229,
@@ -90,7 +109,7 @@ mod tests {
         };
         assert_eq!(
             serde_json::to_string(&response).unwrap(),
-            "{\"id\":\"id\",\"type\":\"type\",\"role\":\"assistant\",\"content\":\"content\",\"model\":\"claude-3-sonnet-20240229\",\"stop_reason\":\"end_turn\",\"stop_sequence\":\"stop_sequence\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}"
+            "{\"id\":\"id\",\"type\":\"message\",\"role\":\"assistant\",\"content\":\"content\",\"model\":\"claude-3-sonnet-20240229\",\"stop_reason\":\"end_turn\",\"stop_sequence\":\"stop_sequence\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}"
         );
     }
 
@@ -98,7 +117,7 @@ mod tests {
     fn deserialize() {
         let response = MessagesResponseBody {
             id: "id".to_string(),
-            _type: "type".to_string(),
+            _type: MessageObjectType::Message,
             role: Role::Assistant,
             content: "content".into(),
             model: ClaudeModel::Claude3Sonnet20240229,
@@ -111,7 +130,7 @@ mod tests {
         };
         assert_eq!(
             serde_json::from_str::<MessagesResponseBody>(
-            "{\"id\":\"id\",\"type\":\"type\",\"role\":\"assistant\",\"content\":\"content\",\"model\":\"claude-3-sonnet-20240229\",\"stop_reason\":\"end_turn\",\"stop_sequence\":\"stop_sequence\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}"
+            "{\"id\":\"id\",\"type\":\"message\",\"role\":\"assistant\",\"content\":\"content\",\"model\":\"claude-3-sonnet-20240229\",\"stop_reason\":\"end_turn\",\"stop_sequence\":\"stop_sequence\",\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}"
             ).unwrap(),
             response
         );
@@ -121,7 +140,7 @@ mod tests {
     fn display() {
         let response = MessagesResponseBody {
             id: "id".to_string(),
-            _type: "type".to_string(),
+            _type: MessageObjectType::Message,
             role: Role::Assistant,
             content: "content".into(),
             model: ClaudeModel::Claude3Sonnet20240229,
@@ -134,7 +153,39 @@ mod tests {
         };
         assert_eq!(
             response.to_string(),
-            "{\n  \"id\": \"id\",\n  \"type\": \"type\",\n  \"role\": \"assistant\",\n  \"content\": \"content\",\n  \"model\": \"claude-3-sonnet-20240229\",\n  \"stop_reason\": \"end_turn\",\n  \"stop_sequence\": \"stop_sequence\",\n  \"usage\": {\n    \"input_tokens\": 1,\n    \"output_tokens\": 2\n  }\n}"
+            "{\n  \"id\": \"id\",\n  \"type\": \"message\",\n  \"role\": \"assistant\",\n  \"content\": \"content\",\n  \"model\": \"claude-3-sonnet-20240229\",\n  \"stop_reason\": \"end_turn\",\n  \"stop_sequence\": \"stop_sequence\",\n  \"usage\": {\n    \"input_tokens\": 1,\n    \"output_tokens\": 2\n  }\n}"
+        );
+    }
+
+    #[test]
+    fn default_message_object_type() {
+        assert_eq!(
+            MessageObjectType::default(),
+            MessageObjectType::Message
+        );
+    }
+
+    #[test]
+    fn message_object_type_display() {
+        assert_eq!(
+            MessageObjectType::Message.to_string(),
+            "message"
+        );
+    }
+
+    #[test]
+    fn message_object_type_serialize() {
+        assert_eq!(
+            serde_json::to_string(&MessageObjectType::Message).unwrap(),
+            "\"message\""
+        );
+    }
+
+    #[test]
+    fn message_object_type_deserialize() {
+        assert_eq!(
+            serde_json::from_str::<MessageObjectType>("\"message\"").unwrap(),
+            MessageObjectType::Message
         );
     }
 }
