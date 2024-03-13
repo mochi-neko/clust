@@ -31,7 +31,7 @@ impl Client {
     ///
     /// let api_key = clust::ApiKey::new("api-key");
     /// let version = clust::Version::V2023_06_01;
-    /// let client = clust::reqwest::Client::new();
+    /// let client = reqwest::Client::new();
     ///
     /// let client = Client::new(api_key, version, client);
     /// ```
@@ -105,8 +105,13 @@ impl Client {
     ///
     /// The Messages API can be used for either single queries or stateless multi-turn conversations.
     ///
+    /// See also [Create a Message](https://docs.anthropic.com/claude/reference/messages_post).
+    ///
     /// ## Arguments
     /// - `request_body` - The request body.
+    ///
+    /// ## NOTE
+    /// The `stream` option must be `None` or `StreamOption::ReturnOnce`.
     ///
     /// ## Example
     /// ```no_run
@@ -141,11 +146,60 @@ impl Client {
         crate::messages::api::create_a_message(self, request_body).await
     }
 
-    pub async fn streaming_messages(
+    /// Create a Message with incrementally streaming the response using server-sent events (SSE).
+    ///
+    /// See also [Streaming Messages](https://docs.anthropic.com/claude/reference/messages-streaming).
+    ///
+    /// ## Arguments
+    /// - `request_body` - The request body.
+    ///
+    /// ## NOTE
+    /// The `stream` option must be `StreamOption::ReturnStream`.
+    ///
+    /// ## Example
+    /// ```no_run
+    /// use clust::Client;
+    /// use clust::messages::{MessagesRequestBody, ClaudeModel, Message, Role, MaxTokens, StreamOption};
+    /// use futures_util::StreamExt;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> anyhow::Result<()> {
+    ///     let client = Client::from_env()?;
+    ///     let model = ClaudeModel::Claude3Sonnet20240229;
+    ///     let max_tokens = MaxTokens::new(1024, model)?;
+    ///     let request_body = MessagesRequestBody {
+    ///         model,
+    ///         max_tokens,
+    ///         messages: vec![
+    ///             Message::user("Hello, Claude!"),
+    ///         ],
+    ///         stream: Some(StreamOption::ReturnStream),
+    ///         ..Default::default()
+    ///     };
+    ///
+    ///     let stream = client
+    ///         .create_a_message_stream(request_body)
+    ///         .await?;
+    ///
+    ///     while let Some(chunk) = stream.next().await {
+    ///         match chunk {
+    ///             Ok(chunk) => {
+    ///                 // Process the chunk.
+    ///             }
+    ///             Err(error) => {
+    ///                 // Handle the error.
+    ///             }
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn create_a_message_stream(
         &self,
         request_body: MessagesRequestBody,
     ) -> MessagesResult<impl futures_util::Stream<Item = ChunkStreamResult>>
     {
-        crate::messages::api::streaming_messages(self, request_body).await
+        crate::messages::api::create_a_message_stream(self, request_body).await
     }
 }

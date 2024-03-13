@@ -62,7 +62,7 @@ pub(crate) async fn create_a_message(
     }
 }
 
-pub(crate) async fn streaming_messages(
+pub(crate) async fn create_a_message_stream(
     client: &Client,
     request_body: MessagesRequestBody,
 ) -> MessagesResult<impl futures_util::Stream<Item = ChunkStreamResult>> {

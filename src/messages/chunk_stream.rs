@@ -25,7 +25,8 @@ impl<S> ChunkStream<S>
 where
     S: Stream<Item = ReqwestStreamItem>,
 {
-    pub(crate) fn new(stream: S) -> Self {
+    /// Create a new chunk stream.
+    pub fn new(stream: S) -> Self {
         ChunkStream {
             stream,
             buffer: BytesMut::new(),
