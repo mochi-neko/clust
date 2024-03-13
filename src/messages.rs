@@ -50,6 +50,7 @@ pub use stop_sequence::StopSequence;
 pub use stream_chunk::ContentBlockDelta;
 pub use stream_chunk::ContentBlockStart;
 pub use stream_chunk::ContentBlockStop;
+pub use stream_chunk::DeltaUsage;
 pub use stream_chunk::MessageDelta;
 pub use stream_chunk::MessageStart;
 pub use stream_chunk::MessageStop;

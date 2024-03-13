@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
     // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
     let client = Client::from_env()?;
 
-    // 2. Create a request body.
+    // 2. Create a request body with stream option.
     let model = ClaudeModel::Claude3Sonnet20240229;
     let messages = vec![Message::user(
         arguments.message,
@@ -47,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
         messages,
         max_tokens,
         system: Some(system_prompt),
-        stream: Some(StreamOption::ReturnStream), // Specify the stream option.
+        stream: Some(StreamOption::ReturnStream),
         ..Default::default()
     };
 
@@ -75,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
             },
         }
     }
-    
+
     println!("Result:\n{}", buffer);
 
     Ok(())

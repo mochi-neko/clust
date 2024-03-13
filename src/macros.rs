@@ -369,6 +369,7 @@ mod tests {
         }
 
         impl TestStructB {
+            #[allow(dead_code)]
             fn new(value: u32) -> Self {
                 Self {
                     tag: "b".to_string(),
@@ -385,6 +386,7 @@ mod tests {
         }
 
         impl TestStructC {
+            #[allow(dead_code)]
             fn new(
                 value: u32,
                 other_value: u32
