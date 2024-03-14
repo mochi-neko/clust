@@ -13,7 +13,8 @@ pub enum ClaudeModel {
     /// Claude 3 Sonnet at 2024/02/29.
     Claude3Sonnet20240229,
     // Claude 3 Haiku
-    // Coming soon
+    /// Claude 3 Haiku at 2024/03/07.
+    Claude3Haiku20240307,
 }
 
 impl Default for ClaudeModel {
@@ -34,6 +35,9 @@ impl Display for ClaudeModel {
             | ClaudeModel::Claude3Sonnet20240229 => {
                 write!(f, "claude-3-sonnet-20240229")
             },
+            | ClaudeModel::Claude3Haiku20240307 => {
+                write!(f, "claude-3-haiku-20240307")
+            },
         }
     }
 }
@@ -43,6 +47,7 @@ impl ClaudeModel {
         match self {
             | ClaudeModel::Claude3Opus20240229 => 4096,
             | ClaudeModel::Claude3Sonnet20240229 => 4096,
+            | ClaudeModel::Claude3Haiku20240307 => 4096,
         }
     }
 }
@@ -50,7 +55,8 @@ impl ClaudeModel {
 impl_enum_string_serialization!(
     ClaudeModel,
     Claude3Opus20240229 => "claude-3-opus-20240229",
-    Claude3Sonnet20240229 => "claude-3-sonnet-20240229"
+    Claude3Sonnet20240229 => "claude-3-sonnet-20240229",
+    Claude3Haiku20240307 => "claude-3-haiku-20240307"
 );
 
 #[cfg(test)]
@@ -75,6 +81,10 @@ mod tests {
             ClaudeModel::Claude3Sonnet20240229.to_string(),
             "claude-3-sonnet-20240229"
         );
+        assert_eq!(
+            ClaudeModel::Claude3Haiku20240307.to_string(),
+            "claude-3-haiku-20240307"
+        );
     }
 
     #[test]
@@ -85,6 +95,10 @@ mod tests {
         );
         assert_eq!(
             ClaudeModel::Claude3Sonnet20240229.max_tokens(),
+            4096
+        );
+        assert_eq!(
+            ClaudeModel::Claude3Haiku20240307.max_tokens(),
             4096
         );
     }
@@ -101,6 +115,11 @@ mod tests {
                 .unwrap(),
             ClaudeModel::Claude3Sonnet20240229
         );
+        assert_eq!(
+            serde_json::from_str::<ClaudeModel>("\"claude-3-haiku-20240307\"")
+                .unwrap(),
+            ClaudeModel::Claude3Haiku20240307
+        );
     }
 
     #[test]
@@ -112,6 +131,10 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&ClaudeModel::Claude3Sonnet20240229).unwrap(),
             "\"claude-3-sonnet-20240229\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ClaudeModel::Claude3Haiku20240307).unwrap(),
+            "\"claude-3-haiku-20240307\""
         );
     }
 }

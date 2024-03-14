@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::from_env()?;
 
     // 2. Create a request body.
-    let model = ClaudeModel::Claude3Sonnet20240229;
+    let model = ClaudeModel::Claude3Haiku20240307;
     let messages = vec![Message::user(
         arguments.message,
     )];
