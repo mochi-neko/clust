@@ -1,5 +1,8 @@
 //! An unofficial Rust client for [the Anthropic/Claude API](https://docs.anthropic.com/claude/reference/getting-started-with-the-api).
 //!
+//! ## Feature flags
+//! - `tokio-stream`: (Optional) Provides a streaming API with [tokio](https://crates.io/crates/tokio) backend through `tokio_stream::StreamExt` for running on the `tokio` runtime.
+//!
 //! ## Supported APIs
 //! - [Messages](`crate::messages`)
 //!     - [x] [Create a Message](https://docs.anthropic.com/claude/reference/messages_post)
@@ -105,6 +108,7 @@
 //!     let mut buffer = String::new();
 //!
 //!     // 4. Poll the stream.
+//!     // NOTE: The `futures_util::StreamExt` run on the single thread.
 //!     while let Some(chunk) = stream.next().await {
 //!         match chunk {
 //!             | Ok(chunk) => {
@@ -128,6 +132,26 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! ### Streaming messages with `tokio` backend
+//! When you use streaming API with `tokio` backend,
+//! you need to enable the feature flag: `tokio-stream` and use [tokio-stream::StreamExt](https://docs.rs/tokio-stream/latest/tokio_stream/trait.StreamExt.html).
+//!
+//! ```diff
+//! - use futures_util::StreamExt;
+//! + use tokio_stream::StreamExt;
+//! ```
+//!
+//! then call `clust::client::create_a_message_stream_tokio` instead of `clust::client::create_a_message_stream`:
+//!
+//! ```diff
+//! let mut stream = client
+//! -     .create_a_message_stream(request_body)
+//! +     .create_a_message_stream_tokio(request_body)
+//!     .await?;
+//! ```
+//!
+//! See also [examples](./examples) for more details.
 
 mod api_key;
 mod client;

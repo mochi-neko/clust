@@ -15,8 +15,13 @@ or add the following line to your Cargo.toml:
 
 ```toml
 [dependencies]
-clust = "0.3.0"
+clust = "0.4.0"
 ```
+
+## Feature flags
+
+- `tokio-stream`: (Optional) Provides a streaming API with [tokio](https://crates.io/crates/tokio) backend
+  through `tokio_stream::StreamExt` for running on the `tokio` runtime.
 
 ## Supported APIs
 
@@ -126,6 +131,83 @@ async fn main() -> anyhow::Result<()> {
     let mut buffer = String::new();
 
     // 4. Poll the stream.
+    // NOTE: The `futures_util::StreamExt` run on the single thread.
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            | Ok(chunk) => {
+                println!("Chunk:\n{}", chunk);
+                match chunk {
+                    | StreamChunk::ContentBlockDelta(content_block_delta) => {
+                        // Buffer message delta.
+                        buffer.push_str(&content_block_delta.delta.text);
+                    }
+                    | _ => {}
+                }
+            }
+            | Err(error) => {
+                eprintln!("Chunk error:\n{:?}", error);
+            }
+        }
+    }
+
+    println!("Result:\n{}", buffer);
+
+    Ok(())
+}
+```
+
+### Streaming messages with `tokio` backend
+
+An example of creating a message stream with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`
+
+```env
+ANTHROPIC_API_KEY={your-api-key}
+```
+
+with [tokio-stream](https://docs.rs/tokio-stream/latest/tokio_stream/) is as follows:
+
+```rust
+use clust::messages::ClaudeModel;
+use clust::messages::MaxTokens;
+use clust::messages::Message;
+use clust::messages::MessagesRequestBody;
+use clust::messages::SystemPrompt;
+use clust::messages::StreamOption;
+use clust::messages::StreamChunk;
+use clust::Client;
+
+use tokio_stream::StreamExt;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
+    let client = Client::from_env()?;
+
+    // 2. Create a request body with `stream` option.
+    let model = ClaudeModel::Claude3Sonnet20240229;
+    let messages = vec![Message::user(
+        "Where is the capital of France?",
+    )];
+    let max_tokens = MaxTokens::new(1024, model)?;
+    let system_prompt = SystemPrompt::new("You are an excellent AI assistant.");
+    let request_body = MessagesRequestBody {
+        model,
+        messages,
+        max_tokens,
+        system: Some(system_prompt),
+        stream: Some(StreamOption::ReturnStream),
+        ..Default::default()
+    };
+
+    // 3. Call the streaming API.
+    let mut stream = client
+        .create_a_message_stream(request_body)
+        .await?;
+
+    let mut buffer = String::new();
+
+    // 4. Poll the stream.
+    // NOTE: The `tokio_stream::StreamExt` run on the `tokio` runtime.
     while let Some(chunk) = stream.next().await {
         match chunk {
             | Ok(chunk) => {

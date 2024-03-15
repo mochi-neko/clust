@@ -17,6 +17,7 @@ use clust::messages::{MaxTokens, StreamChunk};
 use clust::Client;
 
 use clap::Parser;
+#[cfg(feature = "tokio_stream")]
 use tokio_stream::StreamExt;
 
 #[derive(Parser)]
@@ -29,55 +30,64 @@ struct Arguments {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // 0. Parse the command-line arguments.
-    let arguments = Arguments::parse();
-
-    // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
-    let client = Client::from_env()?;
-
-    // 2. Create a request body with stream option.
-    let model = ClaudeModel::Claude3Sonnet20240229;
-    let messages = vec![Message::user(
-        arguments.message,
-    )];
-    let max_tokens = MaxTokens::new(1024, model)?;
-    let system_prompt = SystemPrompt::new(arguments.prompt);
-    let request_body = MessagesRequestBody {
-        model,
-        messages,
-        max_tokens,
-        system: Some(system_prompt),
-        stream: Some(StreamOption::ReturnStream),
-        ..Default::default()
-    };
-
-    // 3. Call the API.
-    let mut stream = client
-        .create_a_message_stream_tokio(request_body)
-        .await?;
-
-    let mut buffer = String::new();
-
-    // 4. Poll the stream.
-    // NOTE: The `tokio_stream::StreamExt` run on the `tokio` runtime.
-    while let Some(chunk) = stream.next().await {
-        match chunk {
-            | Ok(chunk) => {
-                println!("Chunk:\n{}", chunk);
-                match chunk {
-                    | StreamChunk::ContentBlockDelta(content_block_delta) => {
-                        buffer.push_str(&content_block_delta.delta.text);
-                    },
-                    | _ => {},
-                }
-            },
-            | Err(error) => {
-                eprintln!("Chunk error:\n{:?}", error);
-            },
-        }
+    #[cfg(not(feature = "tokio_stream"))]
+    {
+        panic!("Please enable the feature flag: `tokio_stream`.")
     }
+    #[cfg(feature = "tokio_stream")]
+    {
+        // 0. Parse the command-line arguments.
+        let arguments = Arguments::parse();
 
-    println!("Result:\n{}", buffer);
+        // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
+        let client = Client::from_env()?;
 
-    Ok(())
+        // 2. Create a request body with stream option.
+        let model = ClaudeModel::Claude3Sonnet20240229;
+        let messages = vec![Message::user(
+            arguments.message,
+        )];
+        let max_tokens = MaxTokens::new(1024, model)?;
+        let system_prompt = SystemPrompt::new(arguments.prompt);
+        let request_body = MessagesRequestBody {
+            model,
+            messages,
+            max_tokens,
+            system: Some(system_prompt),
+            stream: Some(StreamOption::ReturnStream),
+            ..Default::default()
+        };
+
+        // 3. Call the API.
+        let mut stream = client
+            .create_a_message_stream_tokio(request_body)
+            .await?;
+
+        let mut buffer = String::new();
+
+        // 4. Poll the stream.
+        // NOTE: The `tokio_stream::StreamExt` run on the `tokio` runtime.
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                | Ok(chunk) => {
+                    println!("Chunk:\n{}", chunk);
+                    match chunk {
+                        | StreamChunk::ContentBlockDelta(
+                            content_block_delta,
+                        ) => {
+                            buffer.push_str(&content_block_delta.delta.text);
+                        },
+                        | _ => {},
+                    }
+                },
+                | Err(error) => {
+                    eprintln!("Chunk error:\n{:?}", error);
+                },
+            }
+        }
+
+        println!("Result:\n{}", buffer);
+
+        Ok(())
+    }
 }

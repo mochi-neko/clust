@@ -22,10 +22,6 @@ jobs:
         run: cargo build --verbose --features tokio-stream
       - name: Build full
         run: cargo build --verbose --features full
-      - name: Run tests
-        run: cargo test --verbose
-      - name: Run tests tokio-stream
-        run: cargo test --verbose --features tokio-stream
       - name: Run tests full
         run: cargo test --verbose --features full
       - name: Run doc

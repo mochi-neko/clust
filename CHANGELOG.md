@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support `tokio::stream` for streaming API by optional.
+- Support function calling.
+
+## [0.4.0] - 2024-03-15
+
+### Added
+
+- Support streaming API with `tokio` backend by optional.
 
 ## [0.3.0] - 2024-03-14
 
