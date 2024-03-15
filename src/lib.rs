@@ -152,3 +152,5 @@ pub use version::Version;
 
 pub use futures_util;
 pub use reqwest;
+#[cfg(feature = "tokio_stream")]
+pub use tokio_stream;

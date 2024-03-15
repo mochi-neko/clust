@@ -202,4 +202,63 @@ impl Client {
     {
         crate::messages::api::create_a_message_stream(self, request_body).await
     }
+
+    /// Create a Message with incrementally streaming the response using server-sent events (SSE) with `tokio` backend.
+    ///
+    /// See also [Streaming Messages](https://docs.anthropic.com/claude/reference/messages-streaming).
+    ///
+    /// ## Arguments
+    /// - `request_body` - The request body.
+    ///
+    /// ## NOTE
+    /// The `stream` option must be `StreamOption::ReturnStream`.
+    ///
+    /// ## Example
+    /// ```no_run
+    /// use clust::Client;
+    /// use clust::messages::{MessagesRequestBody, ClaudeModel, Message, Role, MaxTokens, StreamOption};
+    /// use tokio_stream::StreamExt;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> anyhow::Result<()> {
+    ///     let client = Client::from_env()?;
+    ///     let model = ClaudeModel::Claude3Sonnet20240229;
+    ///     let max_tokens = MaxTokens::new(1024, model)?;
+    ///     let request_body = MessagesRequestBody {
+    ///         model,
+    ///         max_tokens,
+    ///         messages: vec![
+    ///             Message::user("Hello, Claude!"),
+    ///         ],
+    ///         stream: Some(StreamOption::ReturnStream),
+    ///         ..Default::default()
+    ///     };
+    ///
+    ///     let mut stream = client
+    ///         .create_a_message_stream(request_body)
+    ///         .await?;
+    ///
+    ///     while let Some(chunk) = stream.next().await {
+    ///         match chunk {
+    ///             Ok(chunk) => {
+    ///                 // Process the chunk.
+    ///             }
+    ///             Err(error) => {
+    ///                 // Handle the error.
+    ///             }
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(feature = "tokio_stream")]
+    pub async fn create_a_message_stream_tokio(
+        &self,
+        request_body: MessagesRequestBody,
+    ) -> MessagesResult<impl tokio_stream::Stream<Item = ChunkStreamResult>>
+    {
+        crate::messages::api::create_a_message_stream_tokio(self, request_body)
+            .await
+    }
 }

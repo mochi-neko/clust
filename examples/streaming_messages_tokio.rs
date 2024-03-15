@@ -1,12 +1,12 @@
-//! This example demonstrates how to use the `streaming_messages` API with `futures_util` backend.
+//! This example demonstrates how to use the `streaming_messages` API with `tokio` backend.
 //!
 //! ```shell
-//! $ cargo run --example streaming_messages -- -p <prompt> -m <message>
+//! $ cargo run --example streaming_messages_tokio --features tokio_stream -- -p <prompt> -m <message>
 //! ```
 //!
 //! e.g.
 //! ```shell
-//! $ cargo run --example streaming_messages -- -p "You are a excellent AI assistant." -m "Where is the capital of Japan?"
+//! $ cargo run --example streaming_messages_tokio --features tokio_stream -- -p "You are a excellent AI assistant." -m "Where is the capital of Japan?"
 //! ```
 
 use clust::messages::Message;
@@ -17,7 +17,7 @@ use clust::messages::{MaxTokens, StreamChunk};
 use clust::Client;
 
 use clap::Parser;
-use futures_util::StreamExt;
+use tokio_stream::StreamExt;
 
 #[derive(Parser)]
 struct Arguments {
@@ -53,13 +53,13 @@ async fn main() -> anyhow::Result<()> {
 
     // 3. Call the API.
     let mut stream = client
-        .create_a_message_stream(request_body)
+        .create_a_message_stream_tokio(request_body)
         .await?;
 
     let mut buffer = String::new();
 
     // 4. Poll the stream.
-    // NOTE: The `futures_util::StreamExt` run on the single thread.
+    // NOTE: The `tokio_stream::StreamExt` run on the `tokio` runtime.
     while let Some(chunk) = stream.next().await {
         match chunk {
             | Ok(chunk) => {

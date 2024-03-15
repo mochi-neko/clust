@@ -1,5 +1,6 @@
 //! The [Messages API](https://docs.anthropic.com/claude/reference/messages_post) implementations.
 
+mod chunk_stream;
 mod claude_model;
 mod content;
 mod error;
@@ -12,6 +13,7 @@ mod result;
 mod role;
 mod stop_reason;
 mod stop_sequence;
+mod stream_chunk;
 mod stream_option;
 mod system_prompt;
 mod temperature;
@@ -19,12 +21,11 @@ mod top_k;
 mod top_p;
 mod usage;
 
-pub(crate) mod api;
-mod chunk_stream;
-mod stream_chunk;
+#[cfg(feature = "tokio_stream")]
+mod tokio_chunk_stream;
 
-pub use chunk_stream::ChunkStream;
-pub use chunk_stream::ChunkStreamResult;
+pub(crate) mod api;
+
 pub use claude_model::ClaudeModel;
 pub use content::Content;
 pub use content::ContentBlock;
@@ -44,6 +45,7 @@ pub use messages_response_body::MessageObjectType;
 pub use messages_response_body::MessagesResponseBody;
 pub use metadata::Metadata;
 pub use metadata::UserId;
+pub use result::ChunkStreamResult;
 pub use result::MessagesResult;
 pub use role::Role;
 pub use stop_reason::StopReason;
