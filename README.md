@@ -201,7 +201,7 @@ async fn main() -> anyhow::Result<()> {
 
     // 3. Call the streaming API.
     let mut stream = client
-        .create_a_message_stream(request_body)
+        .create_a_message_stream_tokio(request_body)
         .await?;
 
     let mut buffer = String::new();
