@@ -1,8 +1,5 @@
 //! An unofficial Rust client for [the Anthropic/Claude API](https://docs.anthropic.com/claude/reference/getting-started-with-the-api).
 //!
-//! ## Feature flags
-//! - `tokio-stream`: (Optional) Provides a streaming API with [tokio](https://crates.io/crates/tokio) backend through `tokio_stream::StreamExt` for running on the `tokio` runtime.
-//!
 //! ## Supported APIs
 //! - [Messages](`crate::messages`)
 //!     - [x] [Create a Message](https://docs.anthropic.com/claude/reference/messages_post)
@@ -135,7 +132,7 @@
 //!
 //! ### Streaming messages with `tokio` backend
 //! When you use streaming API with `tokio` backend,
-//! you need to enable the feature flag: `tokio-stream` and use [tokio-stream::StreamExt](https://docs.rs/tokio-stream/latest/tokio_stream/trait.StreamExt.html).
+//! use [tokio-stream::StreamExt](https://docs.rs/tokio-stream/latest/tokio_stream/trait.StreamExt.html).
 //!
 //! ```diff
 //! - use futures_util::StreamExt;
@@ -174,7 +171,6 @@ pub use error::ValidationError;
 pub use result::ValidationResult;
 pub use version::Version;
 
-pub use futures_util;
+pub use futures_core;
 pub use reqwest;
-#[cfg(feature = "tokio_stream")]
-pub use tokio_stream;
+pub use serde_json;

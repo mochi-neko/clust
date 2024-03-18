@@ -21,9 +21,6 @@ mod top_k;
 mod top_p;
 mod usage;
 
-#[cfg(feature = "tokio_stream")]
-mod tokio_chunk_stream;
-
 pub(crate) mod api;
 
 pub use claude_model::ClaudeModel;

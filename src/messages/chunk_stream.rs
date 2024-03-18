@@ -2,18 +2,21 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use bytes::{Buf, BytesMut};
-use futures_util::{Stream, StreamExt};
+use pin_project::pin_project;
+use futures_core::Stream;
 
 use crate::messages::{ChunkStreamResult, StreamChunk, StreamError};
 
 /// The stream item of the reqwest response.
 type ReqwestStreamItem = Result<bytes::Bytes, reqwest::Error>;
 
-/// The stream of message chunks.
+/// The stream of message chunks with `tokio` backend.
+#[pin_project]
 pub(crate) struct ChunkStream<S>
 where
     S: Stream<Item = ReqwestStreamItem> + Unpin,
 {
+    #[pin]
     stream: S,
     buffer: BytesMut,
 }
@@ -38,27 +41,29 @@ where
     type Item = ChunkStreamResult;
 
     fn poll_next(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
         loop {
-            if let Some(position) = self
+            if let Some(position) = this
                 .buffer
                 .iter()
                 .position(|b| *b == b'\n')
             {
-                if let Some(end) = self.buffer[position + 1..]
+                if let Some(end) = this.buffer[position + 1..]
                     .iter()
                     .position(|b| *b == b'\n')
                 {
                     let chunk_end = position + end + 2;
-                    let chunk = self
+                    let chunk = this
                         .buffer
                         .split_to(chunk_end)
                         .to_vec();
 
                     // Skip the newline.
-                    self.buffer.advance(1);
+                    this.buffer.advance(1);
 
                     // Check if the chunk is not empty.
                     if chunk
@@ -74,13 +79,14 @@ where
                 }
             }
 
-            match self
+            match this
                 .stream
-                .poll_next_unpin(cx)
+                .as_mut()
+                .poll_next(cx)
             {
                 // The stream has more data.
                 | Poll::Ready(Some(Ok(chunk))) => {
-                    self.buffer.extend(&chunk);
+                    this.buffer.extend(&chunk);
                     // Continue to the next iteration of the loop.
                 },
                 // The stream has an error.
@@ -91,10 +97,10 @@ where
                 },
                 // The stream has no more data.
                 | Poll::Ready(None) => {
-                    return if self.buffer.is_empty() {
+                    return if this.buffer.is_empty() {
                         Poll::Ready(None)
                     } else {
-                        let remaining = self.buffer.split_off(0);
+                        let remaining = this.buffer.split_off(0);
                         let remaining =
                             String::from_utf8(remaining.to_vec())
                                 .map_err(StreamError::StringDecodingError)?;
@@ -113,6 +119,7 @@ where
 mod tests {
     use super::super::super::messages::*;
     use super::*;
+    use tokio_stream::StreamExt;
 
     #[tokio::test]
     async fn poll_next() {
@@ -139,7 +146,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
 
 "#;
 
-        let input_stream = futures_util::stream::iter(vec![Ok(
+        let input_stream = tokio_stream::iter(vec![Ok(
             bytes::Bytes::from(source),
         )]);
 

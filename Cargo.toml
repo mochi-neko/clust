@@ -15,28 +15,21 @@ keywords = ["claude", "rest", "api", "client", "machine-learning"]
 [lib]
 path = "src/lib.rs"
 
-[package.metadata.docs.rs]
-all-features = true
-
-[features]
-default = []
-tokio_stream = ["dep:tokio-stream", "dep:pin-project"]
-full = ["tokio_stream"]
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bytes = "1.5.*"
-futures-util = "0.3.*"
 reqwest = { version = "0.11.*", features = ["json", "stream"] }
 serde = { version = "1.0.*", features = ["derive"] }
 serde-json-fmt = "0.1.0"
 serde_json = "1.0.*"
 thiserror = "1.0.*"
-tokio-stream = { version = "0.1.*", optional = true }
-pin-project = { version = "1.1.*", optional = true }
+pin-project = "1.1.*"
+futures-core = "0.3.*"
 
 [dev-dependencies]
 anyhow = "1.0.80"
 clap = { version = "4.5.2", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
+futures-util = "0.3.30"
+tokio-stream = "0.1.15"

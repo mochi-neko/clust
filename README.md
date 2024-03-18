@@ -18,11 +18,6 @@ or add the following line to your Cargo.toml:
 clust = "0.4.0"
 ```
 
-## Feature flags
-
-- `tokio-stream`: (Optional) Provides a streaming API with [tokio](https://crates.io/crates/tokio) backend
-  through `tokio_stream::StreamExt` for running on the `tokio` runtime.
-
 ## Supported APIs
 
 - Messages
