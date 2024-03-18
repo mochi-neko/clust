@@ -131,21 +131,13 @@
 //! ```
 //!
 //! ### Streaming messages with `tokio` backend
-//! When you use streaming API with `tokio` backend,
-//! use [tokio-stream::StreamExt](https://docs.rs/tokio-stream/latest/tokio_stream/trait.StreamExt.html).
+//! When you use streaming API with full `tokio` backend,
+//! replace `futures_util::StreamExt` to [tokio_stream::StreamExt](https://docs.rs/tokio-stream/latest/tokio_stream/trait.StreamExt.html)
+//! with [tokio-stream](https://docs.rs/tokio-stream/latest/tokio_stream/).
 //!
 //! ```diff
 //! - use futures_util::StreamExt;
 //! + use tokio_stream::StreamExt;
-//! ```
-//!
-//! then call `clust::client::create_a_message_stream_tokio` instead of `clust::client::create_a_message_stream`:
-//!
-//! ```diff
-//! let mut stream = client
-//! -     .create_a_message_stream(request_body)
-//! +     .create_a_message_stream_tokio(request_body)
-//!     .await?;
 //! ```
 //!
 //! See also [examples](./examples) for more details.
