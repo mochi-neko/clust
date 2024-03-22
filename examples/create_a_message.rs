@@ -10,10 +10,14 @@
 //! ```
 
 use clust::messages::ClaudeModel;
+use clust::messages::Content;
+use clust::messages::ContentBlock;
 use clust::messages::MaxTokens;
 use clust::messages::Message;
 use clust::messages::MessagesRequestBody;
+use clust::messages::MessagesResponseBody;
 use clust::messages::SystemPrompt;
+use clust::messages::TextContentBlock;
 use clust::Client;
 
 use clap::Parser;
@@ -24,6 +28,23 @@ struct Arguments {
     prompt: String,
     #[arg(short, long)]
     message: String,
+}
+
+/// Demonstrates how to extract the response text from a MessagesResponseBody, and prints to stdout
+fn print_response_text(response: MessagesResponseBody) {
+  match response.content {
+    Content::MultipleBlock(response_vector) => {
+      if !response_vector.is_empty() {
+        for block in response_vector.iter() {
+          match block {
+            ContentBlock::Text(TextContentBlock { _type, text }) => println!("Multi-block response text: {text}"),
+            _ => ()
+          };
+        }
+      }
+    },
+    Content::SingleText(text) => println!("Single text response: {text}")
+  };
 }
 
 #[tokio::main]
@@ -54,7 +75,9 @@ async fn main() -> anyhow::Result<()> {
         .create_a_message(request_body)
         .await?;
 
-    println!("Result:\n{}", response);
+    println!("Entire result:\n{}", response);
+
+    print_response_text(response);
 
     Ok(())
 }
