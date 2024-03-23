@@ -212,11 +212,11 @@ use clust::messages::MaxTokens;
 use clust::messages::SystemPrompt;
 
 let request_body = MessagesRequestBody {
-model: ClaudeModel::Claude3Sonnet20240229,
-messages: vec![Message::user("Hello, Claude!")],
-max_tokens: MaxTokens::new(1024, ClaudeModel::Claude3Sonnet20240229).unwrap(),
-system: Some(SystemPrompt::new("You are an excellent AI assistant.")),
-..Default::default ()
+    model: ClaudeModel::Claude3Sonnet20240229,
+    messages: vec![Message::user("Hello, Claude!")],
+    max_tokens: MaxTokens::new(1024, ClaudeModel::Claude3Sonnet20240229).unwrap(),
+    system: Some(SystemPrompt::new("You are an excellent AI assistant.")),
+    ..Default::default ()
 };
 ```
 
