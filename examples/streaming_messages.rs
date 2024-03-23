@@ -9,11 +9,13 @@
 //! $ cargo run --example streaming_messages -- -p "You are a excellent AI assistant." -m "Where is the capital of Japan?"
 //! ```
 
+use clust::messages::ClaudeModel;
+use clust::messages::MaxTokens;
 use clust::messages::Message;
 use clust::messages::MessagesRequestBody;
+use clust::messages::StreamChunk;
+use clust::messages::StreamOption;
 use clust::messages::SystemPrompt;
-use clust::messages::{ClaudeModel, StreamOption};
-use clust::messages::{MaxTokens, StreamChunk};
 use clust::Client;
 
 use clap::Parser;
@@ -32,8 +34,10 @@ async fn main() -> anyhow::Result<()> {
     // 0. Parse the command-line arguments.
     let arguments = Arguments::parse();
 
-    // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
+    // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`
     let client = Client::from_env()?;
+    // or specify the API key directly
+    // let client = Client::from_api_key(clust::ApiKey::new("your-api-key"));
 
     // 2. Create a request body with stream option.
     let model = ClaudeModel::Claude3Sonnet20240229;
@@ -47,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
         messages,
         max_tokens,
         system: Some(system_prompt),
-        stream: Some(StreamOption::ReturnStream),
+        stream: Some(StreamOption::ReturnStream), // Enable streaming
         ..Default::default()
     };
 
@@ -77,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
+    // 5. Use the result buffer.
     println!("Result:\n{}", buffer);
 
     Ok(())
