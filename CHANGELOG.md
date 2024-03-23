@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add the text extraction method for `MessagesResponseBody`: `MessagesResponseBody::text()`.
 - Add the assistant message creation method for `MessagesResponseBody`: `MessagesResponseBody::create_message()`.
+- Add an example to create a message with vision.
+- Add an example to converse with the assistant.
 
 ## [0.5.0] - 2024-03-18
 
