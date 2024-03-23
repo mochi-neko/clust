@@ -30,3 +30,25 @@ pub enum StreamError {
     #[error(transparent)]
     ChunkDataDeserializationError(#[from] serde_json::Error),
 }
+
+/// The error type for the text content extraction from response body of the Messages API.
+#[derive(Debug, thiserror::Error)]
+pub enum TextContentExtractionError {
+    /// The multiple content blocks is empty.
+    #[error("The multiple content block is empty")]
+    Empty,
+    /// The first content block in multiple blocks is not a text block or text delta block.
+    #[error("The first content block in multiple blocks is not a text block or text delta block")]
+    NotTextBlock,
+}
+
+/// The error type for parsing the image media type from an extension in a path.
+#[derive(Debug, thiserror::Error)]
+pub enum ImageMediaTypeParseError {
+    /// The extension is not supported
+    #[error("The extension is not supported: {0}")]
+    NotSupported(String),
+    /// Extension is not found
+    #[error("Extension is not found")]
+    NotFound,
+}

@@ -42,6 +42,19 @@ impl Message {
             content: content.into(),
         }
     }
+
+    pub fn new<T>(
+        role: Role,
+        content: T,
+    ) -> Self
+    where
+        T: Into<Content>,
+    {
+        Self {
+            role,
+            content: content.into(),
+        }
+    }
 }
 
 #[cfg(test)]

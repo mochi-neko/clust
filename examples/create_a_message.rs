@@ -31,8 +31,10 @@ async fn main() -> anyhow::Result<()> {
     // 0. Parse the command-line arguments.
     let arguments = Arguments::parse();
 
-    // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
+    // 1. Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`
     let client = Client::from_env()?;
+    // or specify the API key directly
+    // let client = Client::from_api_key(clust::ApiKey::new("your-api-key"));
 
     // 2. Create a request body.
     let model = ClaudeModel::Claude3Haiku20240307;
@@ -55,6 +57,9 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     println!("Result:\n{}", response);
+
+    // 4. Use the text content.
+    println!("Content: {}", response.text()?);
 
     Ok(())
 }

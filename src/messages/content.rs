@@ -3,7 +3,9 @@ use crate::macros::{
     impl_enum_struct_serialization,
     impl_enum_with_string_or_array_serialization,
 };
+use crate::messages::ImageMediaTypeParseError;
 use std::fmt::Display;
+use std::path::PathBuf;
 
 /// The content of the message.
 #[derive(Debug, Clone, PartialEq)]
@@ -26,6 +28,14 @@ impl From<&str> for Content {
     }
 }
 
+impl From<ImageContentSource> for Content {
+    fn from(image: ImageContentSource) -> Self {
+        Self::MultipleBlock(vec![ContentBlock::Image(
+            image.into(),
+        )])
+    }
+}
+
 impl_enum_with_string_or_array_serialization!(
     Content,
     SingleText(String),
@@ -33,6 +43,15 @@ impl_enum_with_string_or_array_serialization!(
 );
 
 impl_display_for_serialize!(Content);
+
+impl Content {
+    pub fn new<T>(content: T) -> Self
+    where
+        T: Into<Content>,
+    {
+        content.into()
+    }
+}
 
 /// The content block of the message.
 #[derive(Debug, Clone, PartialEq)]
@@ -51,6 +70,18 @@ impl Default for ContentBlock {
     }
 }
 
+impl From<&str> for ContentBlock {
+    fn from(text: &str) -> Self {
+        Self::Text(text.into())
+    }
+}
+
+impl From<ImageContentSource> for ContentBlock {
+    fn from(image: ImageContentSource) -> Self {
+        Self::Image(image.into())
+    }
+}
+
 impl_enum_struct_serialization!(
     ContentBlock,
     type,
@@ -60,6 +91,15 @@ impl_enum_struct_serialization!(
 );
 
 impl_display_for_serialize!(ContentBlock);
+
+impl ContentBlock {
+    pub fn new<T>(block: T) -> Self
+    where
+        T: Into<ContentBlock>,
+    {
+        block.into()
+    }
+}
 
 /// The text content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -133,6 +173,12 @@ impl Default for ImageContentBlock {
 }
 
 impl_display_for_serialize!(ImageContentBlock);
+
+impl From<ImageContentSource> for ImageContentBlock {
+    fn from(value: ImageContentSource) -> Self {
+        Self::new(value)
+    }
+}
 
 impl ImageContentBlock {
     /// Creates a new image content block.
@@ -210,6 +256,22 @@ impl Default for ImageContentSource {
 }
 
 impl_display_for_serialize!(ImageContentSource);
+
+impl ImageContentSource {
+    pub fn new<S>(
+        media_type: ImageMediaType,
+        data: S,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            media_type,
+            data: data.into(),
+            ..Default::default()
+        }
+    }
+}
 
 /// The source type of the image.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -290,6 +352,24 @@ impl_enum_string_serialization!(
     Gif => "image/gif",
     Webp => "image/webp"
 );
+
+impl ImageMediaType {
+    pub fn from_path(path: PathBuf) -> Result<Self, ImageMediaTypeParseError> {
+        match path
+            .extension()
+            .and_then(|ext| ext.to_str())
+        {
+            | Some("jpeg") | Some("jpg") => Ok(Self::Jpeg),
+            | Some("png") => Ok(Self::Png),
+            | Some("gif") => Ok(Self::Gif),
+            | Some("webp") => Ok(Self::Webp),
+            | Some(extension) => Err(ImageMediaTypeParseError::NotSupported(
+                extension.to_string(),
+            )),
+            | None => Err(ImageMediaTypeParseError::NotFound),
+        }
+    }
+}
 
 /// The text delta content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

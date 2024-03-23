@@ -2,16 +2,16 @@ use crate::macros::{
     impl_display_for_serialize, impl_enum_string_serialization,
 };
 use crate::messages::{
-    ClaudeModel, Content, Role, StopReason, StopSequence, Usage,
+    ClaudeModel, Content, ContentBlock, Message, Role, StopReason,
+    StopSequence, TextContentExtractionError, Usage,
 };
+
 use std::fmt::{Display, Formatter};
 
 /// The response body for the Messages API.
 ///
 /// See also [the Messages API](https://docs.anthropic.com/claude/reference/messages_post).
-#[derive(
-    Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MessagesResponseBody {
     /// Unique object identifier.
     ///
@@ -57,7 +57,56 @@ pub struct MessagesResponseBody {
     pub usage: Usage,
 }
 
+impl Default for MessagesResponseBody {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            _type: Default::default(),
+            role: Role::Assistant,
+            content: Default::default(),
+            model: Default::default(),
+            stop_reason: Default::default(),
+            stop_sequence: Default::default(),
+            usage: Default::default(),
+        }
+    }
+}
+
 impl_display_for_serialize!(MessagesResponseBody);
+
+impl MessagesResponseBody {
+    /// Returns result to extract text content for `MessagesResponseBody.content` as following patterns:
+    /// - `Content::SingleText` => Returns "`Ok(text)`"
+    /// - `Content::MultipleBlock` =>
+    ///     - Has `ContentBlock::Text` or `ContentBlock::TextDelta` at the first block => Returns "`Ok(text)`"
+    ///     - Otherwise => Returns "`Err(TextContentExtractionError)`".
+    pub fn text(&self) -> Result<&str, TextContentExtractionError> {
+        match &self.content {
+            | Content::SingleText(text) => Ok(text),
+            | Content::MultipleBlock(block) => {
+                if let Some(first) = block.first() {
+                    match first {
+                        | ContentBlock::Text(text) => Ok(&text.text),
+                        | ContentBlock::Image(_) => {
+                            Err(TextContentExtractionError::NotTextBlock)
+                        },
+                        | ContentBlock::TextDelta(delta) => Ok(&delta.text),
+                    }
+                } else {
+                    Err(TextContentExtractionError::Empty)
+                }
+            },
+        }
+    }
+
+    /// Creates `Message` from response body.
+    pub fn crate_message(self) -> Message {
+        Message {
+            role: self.role,
+            content: self.content,
+        }
+    }
+}
 
 /// The object type for message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,6 +140,7 @@ impl_enum_string_serialization!(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::messages::*;
 
     #[test]
     fn serialize() {
@@ -186,6 +236,48 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<MessageObjectType>("\"message\"").unwrap(),
             MessageObjectType::Message
+        );
+    }
+
+    #[test]
+    fn text() {
+        let response = MessagesResponseBody {
+            content: Content::new("content"),
+            ..Default::default()
+        };
+
+        assert_eq!(response.text().unwrap(), "content");
+
+        let response = MessagesResponseBody {
+            content: Content::new(vec![
+                TextContentBlock::new("first").into(),
+                TextContentBlock::new("second").into(),
+            ]),
+            ..Default::default()
+        };
+
+        assert_eq!(response.text().unwrap(), "first");
+
+        let response = MessagesResponseBody {
+            content: Content::new(vec![
+                ImageContentSource::new(ImageMediaType::Png, "source").into(),
+            ]),
+            ..Default::default()
+        };
+
+        assert!(response.text().is_err());
+    }
+
+    #[test]
+    fn create_message() {
+        let response = MessagesResponseBody {
+            content: Content::new("content"),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            response.crate_message(),
+            Message::assistant("content")
         );
     }
 }

@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support function calling.
 
+## [0.6.0] - 2024-03-XX
+
+### Added
+
+- Add the text extraction method for `MessagesResponseBody`: `MessagesResponseBody::text()`.
+- Add the assistant message creation method for `MessagesResponseBody`: `MessagesResponseBody::create_message()`.
+
 ## [0.5.0] - 2024-03-18
 
 ### Changed
