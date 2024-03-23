@@ -54,9 +54,9 @@ use clust::ApiKey;
 use clust::Version;
 
 let client = ClientBuilder::new(ApiKey::new("your-api-key"))
-.set_version(Version::V2023_06_01)
-.set_client(reqwest::ClientBuilder::new().timeout(std::time::Duration::from_secs(10)).build().unwrap())
-.build();
+    .set_version(Version::V2023_06_01)
+    .set_client(reqwest::ClientBuilder::new().timeout(std::time::Duration::from_secs(10)).build().unwrap())
+    .build();
 ```
 
 ### Models and max tokens
@@ -70,8 +70,8 @@ use clust::messages::MessagesRequestBody;
 let model = ClaudeModel::Claude3Sonnet20240229;
 
 let request_body = MessagesRequestBody {
-model,
-..Default::default ()
+    model,
+    ..Default::default ()
 };
 ```
 
@@ -87,9 +87,9 @@ let model = ClaudeModel::Claude3Sonnet20240229;
 let max_tokens = MaxTokens::new(1024, model).unwrap();
 
 let request_body = MessagesRequestBody {
-model,
-max_tokens,
-..Default::default ()
+    model,
+    max_tokens,
+    ..Default::default ()
 };
 ```
 
@@ -104,8 +104,8 @@ use clust::messages::MessagesRequestBody;
 let system_prompt = SystemPrompt::new("You are an excellent AI assistant.");
 
 let request_body = MessagesRequestBody {
-system: Some(system_prompt),
-..Default::default ()
+    system: Some(system_prompt),
+    ..Default::default ()
 };
 ```
 
