@@ -18,7 +18,25 @@ impl Message {
     /// Create a new user message.
     ///
     /// ## Arguments
-    /// - `content` - The content of the message.
+    /// - `content` - The content of the user message.
+    ///
+    /// ## Example
+    /// ```rust
+    /// use clust::messages::{Content, ContentBlock, Message, Role, ImageContentSource, ImageMediaType};
+    ///
+    /// let text_content = "user-message";
+    /// let message = Message::user(text_content); // Generics
+    /// let message = Message::user(text_content.into()); // From trait
+    /// let message = Message::user(Content::SingleText(text_content.to_string())); // Manual
+    ///
+    /// let image_content = ImageContentSource::new(
+    ///     ImageMediaType::Png,
+    ///     "base64 encoded image",
+    /// );
+    /// let message = Message::user(image_content.clone()); // Generics
+    /// let message = Message::user(image_content.into()); // From trait
+    /// let message = Message::user(Content::MultipleBlock(vec![ContentBlock::image(image_content.clone())])); // Manual
+    /// ```
     pub fn user<T>(content: T) -> Self
     where
         T: Into<Content>,
@@ -32,7 +50,17 @@ impl Message {
     /// Create a new assistant message.
     ///
     /// ## Arguments
-    /// - `content` - The content of the message.
+    /// - `content` - The content of the assistant message.
+    ///
+    /// ## Example
+    /// ```rust
+    /// use clust::messages::{Content, ContentBlock, Message};
+    ///
+    /// let text_content = "assistant-message";
+    /// let message = Message::assistant(text_content); // Generics
+    /// let message = Message::assistant(text_content.into()); // From trait
+    /// let message = Message::assistant(Content::SingleText(text_content.to_string())); // Manual
+    /// ```
     pub fn assistant<T>(content: T) -> Self
     where
         T: Into<Content>,
@@ -43,6 +71,29 @@ impl Message {
         }
     }
 
+    /// Create a new message.
+    ///
+    /// ## Arguments
+    /// - `role` - The role of the message.
+    /// - `content` - The content of the message.
+    ///
+    /// ## Example
+    /// ```rust
+    /// use clust::messages::{Content, ContentBlock, Message, Role, ImageContentSource, ImageMediaType};
+    ///
+    /// let text_content = "message";
+    /// let message = Message::new(Role::User, text_content); // Generics
+    /// let message = Message::new(Role::Assistant, text_content.into()); // From trait
+    /// let message = Message::new(Role::Assistant, Content::SingleText(text_content.to_string())); // Manual
+    ///
+    /// let image_content = ImageContentSource::new(
+    ///     ImageMediaType::Png,
+    ///     "base64 encoded image",
+    /// );
+    /// let message = Message::new(Role::User, image_content.clone()); // Generics
+    /// let message = Message::new(Role::User, image_content.into()); // From trait
+    /// let message = Message::new(Role::User, Content::MultipleBlock(vec![ContentBlock::image(image_content.clone())])); // Manual
+    /// ```
     pub fn new<T>(
         role: Role,
         content: T,

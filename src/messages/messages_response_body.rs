@@ -99,7 +99,7 @@ impl MessagesResponseBody {
         }
     }
 
-    /// Creates `Message` from response body.
+    /// Creates `Message` from the response body.
     pub fn crate_message(self) -> Message {
         Message {
             role: self.role,

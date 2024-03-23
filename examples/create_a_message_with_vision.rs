@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
     let image_file = tokio::fs::read(&arguments.image_path).await?;
     let image_base64 = base64::prelude::BASE64_STANDARD.encode(&image_file);
     let image_source = ImageContentSource::new(
-        ImageMediaType::from_path(PathBuf::from(&arguments.image_path))?,
+        ImageMediaType::from_path(&PathBuf::from(&arguments.image_path))?,
         image_base64,
     );
 

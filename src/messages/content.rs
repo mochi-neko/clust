@@ -93,6 +93,31 @@ impl_enum_struct_serialization!(
 impl_display_for_serialize!(ContentBlock);
 
 impl ContentBlock {
+    /// Creates a new content block from a text.
+    pub fn text<T>(text: T) -> Self
+    where
+        T: Into<TextContentBlock>,
+    {
+        Self::Text(text.into())
+    }
+
+    /// Creates a new content block from an image source.
+    pub fn image<T>(image: T) -> Self
+    where
+        T: Into<ImageContentBlock>,
+    {
+        Self::Image(image.into())
+    }
+
+    /// Creates a new content block from a text delta.
+    pub fn text_delta<T>(delta: T) -> Self
+    where
+        T: Into<TextDeltaContentBlock>,
+    {
+        Self::TextDelta(delta.into())
+    }
+
+    /// Creates a new content block.
     pub fn new<T>(block: T) -> Self
     where
         T: Into<ContentBlock>,
@@ -258,6 +283,11 @@ impl Default for ImageContentSource {
 impl_display_for_serialize!(ImageContentSource);
 
 impl ImageContentSource {
+    /// Creates a new image content source.
+    ///
+    /// ## Arguments
+    /// - `media_type` - The media type of the image.
+    /// - `data` - The data of the image.
     pub fn new<S>(
         media_type: ImageMediaType,
         data: S,
@@ -354,7 +384,8 @@ impl_enum_string_serialization!(
 );
 
 impl ImageMediaType {
-    pub fn from_path(path: PathBuf) -> Result<Self, ImageMediaTypeParseError> {
+    /// Creates the media type from the extension of the path.
+    pub fn from_path(path: &PathBuf) -> Result<Self, ImageMediaTypeParseError> {
         match path
             .extension()
             .and_then(|ext| ext.to_str())
