@@ -6,13 +6,13 @@ use crate::macros::{
     impl_display_for_serialize, impl_enum_string_serialization,
 };
 use crate::messages::{
-    MessagesResponseBody, StopReason, StopSequence, StreamError,
-    TextContentBlock, TextDeltaContentBlock,
+    MessageChunkTypeError, MessagesResponseBody, StopReason, StopSequence,
+    StreamError, TextContentBlock, TextDeltaContentBlock,
 };
 
 /// The stream chunk of messages.
 #[derive(Debug, Clone, PartialEq)]
-pub enum StreamChunk {
+pub enum MessageChunk {
     /// Message start chunk.
     MessageStart(MessageStartChunk),
     /// Content block start chunk.
@@ -29,17 +29,7 @@ pub enum StreamChunk {
     MessageStop(MessageStopChunk),
 }
 
-#[derive(Debug, thiserror::Error)]
-enum SerializeError {
-    /// The error of JSON serialization.
-    #[error(transparent)]
-    JsonError(#[from] serde_json::Error),
-    /// The error of string decoding.
-    #[error(transparent)]
-    DecodeError(#[from] std::string::FromUtf8Error),
-}
-
-impl Display for StreamChunk {
+impl Display for MessageChunk {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -51,7 +41,7 @@ impl Display for StreamChunk {
             .map_err(|_| std::fmt::Error)?;
 
         match self {
-            | StreamChunk::MessageStart(message_start) => {
+            | MessageChunk::MessageStart(message_start) => {
                 let json = json_format
                     .format_to_string(&message_start)
                     .map_err(|_| std::fmt::Error)?;
@@ -62,7 +52,7 @@ impl Display for StreamChunk {
                     message_start._type, json
                 )
             },
-            | StreamChunk::ContentBlockStart(content_block_start) => {
+            | MessageChunk::ContentBlockStart(content_block_start) => {
                 let json = json_format
                     .format_to_string(&content_block_start)
                     .map_err(|_| std::fmt::Error)?;
@@ -73,7 +63,7 @@ impl Display for StreamChunk {
                     content_block_start._type, json
                 )
             },
-            | StreamChunk::Ping(ping) => {
+            | MessageChunk::Ping(ping) => {
                 let json = json_format
                     .format_to_string(&ping)
                     .map_err(|_| std::fmt::Error)?;
@@ -84,7 +74,7 @@ impl Display for StreamChunk {
                     ping._type, json
                 )
             },
-            | StreamChunk::ContentBlockDelta(content_block_delta) => {
+            | MessageChunk::ContentBlockDelta(content_block_delta) => {
                 let json = json_format
                     .format_to_string(&content_block_delta)
                     .map_err(|_| std::fmt::Error)?;
@@ -95,7 +85,7 @@ impl Display for StreamChunk {
                     content_block_delta._type, json
                 )
             },
-            | StreamChunk::ContentBlockStop(content_block_stop) => {
+            | MessageChunk::ContentBlockStop(content_block_stop) => {
                 let json = json_format
                     .format_to_string(&content_block_stop)
                     .map_err(|_| std::fmt::Error)?;
@@ -106,7 +96,7 @@ impl Display for StreamChunk {
                     content_block_stop._type, json
                 )
             },
-            | StreamChunk::MessageDelta(message_delta) => {
+            | MessageChunk::MessageDelta(message_delta) => {
                 let json = json_format
                     .format_to_string(&message_delta)
                     .map_err(|_| std::fmt::Error)?;
@@ -117,7 +107,7 @@ impl Display for StreamChunk {
                     message_delta._type, json
                 )
             },
-            | StreamChunk::MessageStop(message_stop) => {
+            | MessageChunk::MessageStop(message_stop) => {
                 let json = json_format
                     .format_to_string(&message_stop)
                     .map_err(|_| std::fmt::Error)?;
@@ -132,8 +122,8 @@ impl Display for StreamChunk {
     }
 }
 
-impl StreamChunk {
-    pub(crate) fn parse(source: &str) -> Result<StreamChunk, StreamError> {
+impl MessageChunk {
+    pub(crate) fn parse(source: &str) -> Result<MessageChunk, StreamError> {
         let lines = source
             .lines()
             .collect::<Vec<&str>>();
@@ -158,8 +148,8 @@ impl StreamChunk {
                     source
                 ))
             })?;
-        let chunk_type = StreamChunkType::from_str(event)
-            .map_err(StreamError::ParseChunkStringError)?;
+        let chunk_type = MessageChunkType::from_str(event)
+            .map_err(StreamError::MessageChunkTypeError)?;
 
         // Parse the data segment to the chunk data.
         let second_line = lines[1];
@@ -174,50 +164,50 @@ impl StreamChunk {
 
         // Deserialize the chunk data.
         match chunk_type {
-            | StreamChunkType::MessageStart => {
+            | MessageChunkType::MessageStart => {
                 let message = serde_json::from_str(data)
                     .map_err(StreamError::ChunkDataDeserializationError)?;
-                Ok(StreamChunk::MessageStart(message))
+                Ok(MessageChunk::MessageStart(message))
             },
-            | StreamChunkType::ContentBlockStart => {
+            | MessageChunkType::ContentBlockStart => {
                 let content_block = serde_json::from_str(data)
                     .map_err(StreamError::ChunkDataDeserializationError)?;
-                Ok(StreamChunk::ContentBlockStart(
+                Ok(MessageChunk::ContentBlockStart(
                     content_block,
                 ))
             },
-            | StreamChunkType::Ping => {
+            | MessageChunkType::Ping => {
                 let ping = serde_json::from_str(data)
                     .map_err(StreamError::ChunkDataDeserializationError)?;
-                Ok(StreamChunk::Ping(ping))
+                Ok(MessageChunk::Ping(ping))
             },
-            | StreamChunkType::ContentBlockDelta => {
+            | MessageChunkType::ContentBlockDelta => {
                 let delta = serde_json::from_str(data)
                     .map_err(StreamError::ChunkDataDeserializationError)?;
-                Ok(StreamChunk::ContentBlockDelta(delta))
+                Ok(MessageChunk::ContentBlockDelta(delta))
             },
-            | StreamChunkType::ContentBlockStop => {
+            | MessageChunkType::ContentBlockStop => {
                 let stop = serde_json::from_str(data)
                     .map_err(StreamError::ChunkDataDeserializationError)?;
-                Ok(StreamChunk::ContentBlockStop(stop))
+                Ok(MessageChunk::ContentBlockStop(stop))
             },
-            | StreamChunkType::MessageDelta => {
+            | MessageChunkType::MessageDelta => {
                 let delta = serde_json::from_str(data)
                     .map_err(StreamError::ChunkDataDeserializationError)?;
-                Ok(StreamChunk::MessageDelta(delta))
+                Ok(MessageChunk::MessageDelta(delta))
             },
-            | StreamChunkType::MessageStop => {
+            | MessageChunkType::MessageStop => {
                 let stop = serde_json::from_str(data)
                     .map_err(StreamError::ChunkDataDeserializationError)?;
-                Ok(StreamChunk::MessageStop(stop))
+                Ok(MessageChunk::MessageStop(stop))
             },
         }
     }
 }
 
-/// The type of stream chunk.
+/// The type of message chunk.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum StreamChunkType {
+pub enum MessageChunkType {
     /// message_start
     MessageStart,
     /// content_block_start
@@ -234,51 +224,50 @@ pub enum StreamChunkType {
     MessageStop,
 }
 
-impl Display for StreamChunkType {
+impl Display for MessageChunkType {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         match self {
-            | StreamChunkType::MessageStart => write!(f, "message_start"),
-            | StreamChunkType::ContentBlockStart => {
+            | MessageChunkType::MessageStart => write!(f, "message_start"),
+            | MessageChunkType::ContentBlockStart => {
                 write!(f, "content_block_start")
             },
-            | StreamChunkType::Ping => write!(f, "ping"),
-            | StreamChunkType::ContentBlockDelta => {
+            | MessageChunkType::Ping => write!(f, "ping"),
+            | MessageChunkType::ContentBlockDelta => {
                 write!(f, "content_block_delta")
             },
-            | StreamChunkType::ContentBlockStop => {
+            | MessageChunkType::ContentBlockStop => {
                 write!(f, "content_block_stop")
             },
-            | StreamChunkType::MessageDelta => write!(f, "message_delta"),
-            | StreamChunkType::MessageStop => write!(f, "message_stop"),
+            | MessageChunkType::MessageDelta => write!(f, "message_delta"),
+            | MessageChunkType::MessageStop => write!(f, "message_stop"),
         }
     }
 }
 
-impl FromStr for StreamChunkType {
-    type Err = String;
+impl FromStr for MessageChunkType {
+    type Err = MessageChunkTypeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            | "message_start" => Ok(StreamChunkType::MessageStart),
-            | "content_block_start" => Ok(StreamChunkType::ContentBlockStart),
-            | "ping" => Ok(StreamChunkType::Ping),
-            | "content_block_delta" => Ok(StreamChunkType::ContentBlockDelta),
-            | "content_block_stop" => Ok(StreamChunkType::ContentBlockStop),
-            | "message_delta" => Ok(StreamChunkType::MessageDelta),
-            | "message_stop" => Ok(StreamChunkType::MessageStop),
-            | _ => Err(format!(
-                "Unknown stream chunk type: {}",
-                s
-            )),
+            | "message_start" => Ok(MessageChunkType::MessageStart),
+            | "content_block_start" => Ok(MessageChunkType::ContentBlockStart),
+            | "ping" => Ok(MessageChunkType::Ping),
+            | "content_block_delta" => Ok(MessageChunkType::ContentBlockDelta),
+            | "content_block_stop" => Ok(MessageChunkType::ContentBlockStop),
+            | "message_delta" => Ok(MessageChunkType::MessageDelta),
+            | "message_stop" => Ok(MessageChunkType::MessageStop),
+            | _ => Err(MessageChunkTypeError {
+                chunk_type: s.to_string(),
+            }),
         }
     }
 }
 
 impl_enum_string_serialization!(
-    StreamChunkType,
+    MessageChunkType,
     MessageStart => "message_start",
     ContentBlockStart => "content_block_start",
     Ping => "ping",
@@ -293,7 +282,7 @@ impl_enum_string_serialization!(
 pub struct MessageStartChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
-    pub _type: StreamChunkType,
+    pub _type: MessageChunkType,
     /// The start message.
     pub message: MessagesResponseBody,
 }
@@ -301,7 +290,7 @@ pub struct MessageStartChunk {
 impl Default for MessageStartChunk {
     fn default() -> Self {
         Self {
-            _type: StreamChunkType::MessageStart,
+            _type: MessageChunkType::MessageStart,
             message: Default::default(),
         }
     }
@@ -313,7 +302,7 @@ impl MessageStartChunk {
     /// Creates a new `MessageStart` instance.
     pub fn new(message: MessagesResponseBody) -> Self {
         Self {
-            _type: StreamChunkType::MessageStart,
+            _type: MessageChunkType::MessageStart,
             message,
         }
     }
@@ -324,7 +313,7 @@ impl MessageStartChunk {
 pub struct ContentBlockStartChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
-    pub _type: StreamChunkType,
+    pub _type: MessageChunkType,
     /// The index.
     pub index: u32,
     /// The text content block of start.
@@ -334,7 +323,7 @@ pub struct ContentBlockStartChunk {
 impl Default for ContentBlockStartChunk {
     fn default() -> Self {
         Self {
-            _type: StreamChunkType::ContentBlockStart,
+            _type: MessageChunkType::ContentBlockStart,
             index: Default::default(),
             content_block: Default::default(),
         }
@@ -350,7 +339,7 @@ impl ContentBlockStartChunk {
         content_block: TextContentBlock,
     ) -> Self {
         Self {
-            _type: StreamChunkType::ContentBlockStart,
+            _type: MessageChunkType::ContentBlockStart,
             index,
             content_block,
         }
@@ -362,13 +351,13 @@ impl ContentBlockStartChunk {
 pub struct PingChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
-    pub _type: StreamChunkType,
+    pub _type: MessageChunkType,
 }
 
 impl Default for PingChunk {
     fn default() -> Self {
         Self {
-            _type: StreamChunkType::Ping,
+            _type: MessageChunkType::Ping,
         }
     }
 }
@@ -379,7 +368,7 @@ impl PingChunk {
     /// Creates a new `Ping` instance.
     pub fn new() -> Self {
         Self {
-            _type: StreamChunkType::Ping,
+            _type: MessageChunkType::Ping,
         }
     }
 }
@@ -389,7 +378,7 @@ impl PingChunk {
 pub struct ContentBlockDeltaChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
-    pub _type: StreamChunkType,
+    pub _type: MessageChunkType,
     /// The index.
     pub index: u32,
     /// The text delta content block.
@@ -399,7 +388,7 @@ pub struct ContentBlockDeltaChunk {
 impl Default for ContentBlockDeltaChunk {
     fn default() -> Self {
         Self {
-            _type: StreamChunkType::ContentBlockDelta,
+            _type: MessageChunkType::ContentBlockDelta,
             index: Default::default(),
             delta: Default::default(),
         }
@@ -415,7 +404,7 @@ impl ContentBlockDeltaChunk {
         delta: TextDeltaContentBlock,
     ) -> Self {
         Self {
-            _type: StreamChunkType::ContentBlockDelta,
+            _type: MessageChunkType::ContentBlockDelta,
             index,
             delta,
         }
@@ -427,7 +416,7 @@ impl ContentBlockDeltaChunk {
 pub struct ContentBlockStopChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
-    pub _type: StreamChunkType,
+    pub _type: MessageChunkType,
     /// The index.
     pub index: u32,
 }
@@ -435,7 +424,7 @@ pub struct ContentBlockStopChunk {
 impl Default for ContentBlockStopChunk {
     fn default() -> Self {
         Self {
-            _type: StreamChunkType::ContentBlockStop,
+            _type: MessageChunkType::ContentBlockStop,
             index: Default::default(),
         }
     }
@@ -447,7 +436,7 @@ impl ContentBlockStopChunk {
     /// Creates a new `ContentBlockStop` instance.
     pub fn new(index: u32) -> Self {
         Self {
-            _type: StreamChunkType::ContentBlockStop,
+            _type: MessageChunkType::ContentBlockStop,
             index,
         }
     }
@@ -458,7 +447,7 @@ impl ContentBlockStopChunk {
 pub struct MessageDeltaChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
-    pub _type: StreamChunkType,
+    pub _type: MessageChunkType,
     /// The result of this stream.
     pub delta: StreamStop,
     /// The billing and rate-limit usage of this stream.
@@ -468,7 +457,7 @@ pub struct MessageDeltaChunk {
 impl Default for MessageDeltaChunk {
     fn default() -> Self {
         Self {
-            _type: StreamChunkType::MessageDelta,
+            _type: MessageChunkType::MessageDelta,
             delta: Default::default(),
             usage: Default::default(),
         }
@@ -484,7 +473,7 @@ impl MessageDeltaChunk {
         usage: DeltaUsage,
     ) -> Self {
         Self {
-            _type: StreamChunkType::MessageDelta,
+            _type: MessageChunkType::MessageDelta,
             delta,
             usage,
         }
@@ -496,13 +485,13 @@ impl MessageDeltaChunk {
 pub struct MessageStopChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
-    pub _type: StreamChunkType,
+    pub _type: MessageChunkType,
 }
 
 impl Default for MessageStopChunk {
     fn default() -> Self {
         Self {
-            _type: StreamChunkType::MessageStop,
+            _type: MessageChunkType::MessageStop,
         }
     }
 }
@@ -513,7 +502,7 @@ impl MessageStopChunk {
     /// Creates a new `MessageStop` instance.
     pub fn new() -> Self {
         Self {
-            _type: StreamChunkType::MessageStop,
+            _type: MessageChunkType::MessageStop,
         }
     }
 }
@@ -558,63 +547,63 @@ mod tests {
     #[test]
     fn from_str_chunk_type() {
         assert_eq!(
-            StreamChunkType::from_str("message_start").unwrap(),
-            StreamChunkType::MessageStart
+            MessageChunkType::from_str("message_start").unwrap(),
+            MessageChunkType::MessageStart
         );
         assert_eq!(
-            StreamChunkType::from_str("content_block_start").unwrap(),
-            StreamChunkType::ContentBlockStart
+            MessageChunkType::from_str("content_block_start").unwrap(),
+            MessageChunkType::ContentBlockStart
         );
         assert_eq!(
-            StreamChunkType::from_str("ping").unwrap(),
-            StreamChunkType::Ping
+            MessageChunkType::from_str("ping").unwrap(),
+            MessageChunkType::Ping
         );
         assert_eq!(
-            StreamChunkType::from_str("content_block_delta").unwrap(),
-            StreamChunkType::ContentBlockDelta
+            MessageChunkType::from_str("content_block_delta").unwrap(),
+            MessageChunkType::ContentBlockDelta
         );
         assert_eq!(
-            StreamChunkType::from_str("content_block_stop").unwrap(),
-            StreamChunkType::ContentBlockStop
+            MessageChunkType::from_str("content_block_stop").unwrap(),
+            MessageChunkType::ContentBlockStop
         );
         assert_eq!(
-            StreamChunkType::from_str("message_delta").unwrap(),
-            StreamChunkType::MessageDelta
+            MessageChunkType::from_str("message_delta").unwrap(),
+            MessageChunkType::MessageDelta
         );
         assert_eq!(
-            StreamChunkType::from_str("message_stop").unwrap(),
-            StreamChunkType::MessageStop
+            MessageChunkType::from_str("message_stop").unwrap(),
+            MessageChunkType::MessageStop
         );
     }
 
     #[test]
     fn display_chunk_type() {
         assert_eq!(
-            StreamChunkType::MessageStart.to_string(),
+            MessageChunkType::MessageStart.to_string(),
             "message_start"
         );
         assert_eq!(
-            StreamChunkType::ContentBlockStart.to_string(),
+            MessageChunkType::ContentBlockStart.to_string(),
             "content_block_start"
         );
         assert_eq!(
-            StreamChunkType::Ping.to_string(),
+            MessageChunkType::Ping.to_string(),
             "ping"
         );
         assert_eq!(
-            StreamChunkType::ContentBlockDelta.to_string(),
+            MessageChunkType::ContentBlockDelta.to_string(),
             "content_block_delta"
         );
         assert_eq!(
-            StreamChunkType::ContentBlockStop.to_string(),
+            MessageChunkType::ContentBlockStop.to_string(),
             "content_block_stop"
         );
         assert_eq!(
-            StreamChunkType::MessageDelta.to_string(),
+            MessageChunkType::MessageDelta.to_string(),
             "message_delta"
         );
         assert_eq!(
-            StreamChunkType::MessageStop.to_string(),
+            MessageChunkType::MessageStop.to_string(),
             "message_stop"
         );
     }
@@ -622,31 +611,33 @@ mod tests {
     #[test]
     fn serialize_chunk_type() {
         assert_eq!(
-            serde_json::to_string(&StreamChunkType::MessageStart).unwrap(),
+            serde_json::to_string(&MessageChunkType::MessageStart).unwrap(),
             r#""message_start""#
         );
         assert_eq!(
-            serde_json::to_string(&StreamChunkType::ContentBlockStart).unwrap(),
+            serde_json::to_string(&MessageChunkType::ContentBlockStart)
+                .unwrap(),
             r#""content_block_start""#
         );
         assert_eq!(
-            serde_json::to_string(&StreamChunkType::Ping).unwrap(),
+            serde_json::to_string(&MessageChunkType::Ping).unwrap(),
             r#""ping""#
         );
         assert_eq!(
-            serde_json::to_string(&StreamChunkType::ContentBlockDelta).unwrap(),
+            serde_json::to_string(&MessageChunkType::ContentBlockDelta)
+                .unwrap(),
             r#""content_block_delta""#
         );
         assert_eq!(
-            serde_json::to_string(&StreamChunkType::ContentBlockStop).unwrap(),
+            serde_json::to_string(&MessageChunkType::ContentBlockStop).unwrap(),
             r#""content_block_stop""#
         );
         assert_eq!(
-            serde_json::to_string(&StreamChunkType::MessageDelta).unwrap(),
+            serde_json::to_string(&MessageChunkType::MessageDelta).unwrap(),
             r#""message_delta""#
         );
         assert_eq!(
-            serde_json::to_string(&StreamChunkType::MessageStop).unwrap(),
+            serde_json::to_string(&MessageChunkType::MessageStop).unwrap(),
             r#""message_stop""#
         );
     }
@@ -654,38 +645,42 @@ mod tests {
     #[test]
     fn deserialize_chunk_type() {
         assert_eq!(
-            serde_json::from_str::<StreamChunkType>(r#""message_start""#)
+            serde_json::from_str::<MessageChunkType>(r#""message_start""#)
                 .unwrap(),
-            StreamChunkType::MessageStart
+            MessageChunkType::MessageStart
         );
         assert_eq!(
-            serde_json::from_str::<StreamChunkType>(r#""content_block_start""#)
-                .unwrap(),
-            StreamChunkType::ContentBlockStart
+            serde_json::from_str::<MessageChunkType>(
+                r#""content_block_start""#
+            )
+            .unwrap(),
+            MessageChunkType::ContentBlockStart
         );
         assert_eq!(
-            serde_json::from_str::<StreamChunkType>(r#""ping""#).unwrap(),
-            StreamChunkType::Ping
+            serde_json::from_str::<MessageChunkType>(r#""ping""#).unwrap(),
+            MessageChunkType::Ping
         );
         assert_eq!(
-            serde_json::from_str::<StreamChunkType>(r#""content_block_delta""#)
-                .unwrap(),
-            StreamChunkType::ContentBlockDelta
+            serde_json::from_str::<MessageChunkType>(
+                r#""content_block_delta""#
+            )
+            .unwrap(),
+            MessageChunkType::ContentBlockDelta
         );
         assert_eq!(
-            serde_json::from_str::<StreamChunkType>(r#""content_block_stop""#)
+            serde_json::from_str::<MessageChunkType>(r#""content_block_stop""#)
                 .unwrap(),
-            StreamChunkType::ContentBlockStop
+            MessageChunkType::ContentBlockStop
         );
         assert_eq!(
-            serde_json::from_str::<StreamChunkType>(r#""message_delta""#)
+            serde_json::from_str::<MessageChunkType>(r#""message_delta""#)
                 .unwrap(),
-            StreamChunkType::MessageDelta
+            MessageChunkType::MessageDelta
         );
         assert_eq!(
-            serde_json::from_str::<StreamChunkType>(r#""message_stop""#)
+            serde_json::from_str::<MessageChunkType>(r#""message_stop""#)
                 .unwrap(),
-            StreamChunkType::MessageStop
+            MessageChunkType::MessageStop
         );
     }
 
@@ -788,7 +783,7 @@ mod tests {
         assert_eq!(
             MessageStartChunk::default(),
             MessageStartChunk {
-                _type: StreamChunkType::MessageStart,
+                _type: MessageChunkType::MessageStart,
                 message: Default::default(),
             }
         );
@@ -797,7 +792,7 @@ mod tests {
     #[test]
     fn display_message_start() {
         let message_start = MessageStartChunk {
-            _type: StreamChunkType::MessageStart,
+            _type: MessageChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
                 _type: MessageObjectType::Message,
@@ -821,7 +816,7 @@ mod tests {
     #[test]
     fn serialize_message_start() {
         let message_start = MessageStartChunk {
-            _type: StreamChunkType::MessageStart,
+            _type: MessageChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
                 _type: MessageObjectType::Message,
@@ -845,7 +840,7 @@ mod tests {
     #[test]
     fn deserialize_message_start() {
         let message_start = MessageStartChunk {
-            _type: StreamChunkType::MessageStart,
+            _type: MessageChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
                 _type: MessageObjectType::Message,
@@ -874,7 +869,7 @@ mod tests {
         assert_eq!(
             ContentBlockStartChunk::default(),
             ContentBlockStartChunk {
-                _type: StreamChunkType::ContentBlockStart,
+                _type: MessageChunkType::ContentBlockStart,
                 index: Default::default(),
                 content_block: Default::default(),
             }
@@ -884,7 +879,7 @@ mod tests {
     #[test]
     fn display_content_block_start() {
         let content_block_start = ContentBlockStartChunk {
-            _type: StreamChunkType::ContentBlockStart,
+            _type: MessageChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
                 text: "text".to_string(),
@@ -900,7 +895,7 @@ mod tests {
     #[test]
     fn serialize_content_block_start() {
         let content_block_start = ContentBlockStartChunk {
-            _type: StreamChunkType::ContentBlockStart,
+            _type: MessageChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
                 text: "text".to_string(),
@@ -916,7 +911,7 @@ mod tests {
     #[test]
     fn deserialize_content_block_start() {
         let content_block_start = ContentBlockStartChunk {
-            _type: StreamChunkType::ContentBlockStart,
+            _type: MessageChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
                 text: "text".to_string(),
@@ -937,7 +932,7 @@ mod tests {
         assert_eq!(
             PingChunk::default(),
             PingChunk {
-                _type: StreamChunkType::Ping,
+                _type: MessageChunkType::Ping,
             }
         );
     }
@@ -974,7 +969,7 @@ mod tests {
         assert_eq!(
             ContentBlockDeltaChunk::default(),
             ContentBlockDeltaChunk {
-                _type: StreamChunkType::ContentBlockDelta,
+                _type: MessageChunkType::ContentBlockDelta,
                 index: Default::default(),
                 delta: Default::default(),
             }
@@ -984,7 +979,7 @@ mod tests {
     #[test]
     fn display_content_block_delta() {
         let content_block_delta = ContentBlockDeltaChunk {
-            _type: StreamChunkType::ContentBlockDelta,
+            _type: MessageChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
                 text: "text".to_string(),
@@ -1000,7 +995,7 @@ mod tests {
     #[test]
     fn serialize_content_block_delta() {
         let content_block_delta = ContentBlockDeltaChunk {
-            _type: StreamChunkType::ContentBlockDelta,
+            _type: MessageChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
                 text: "text".to_string(),
@@ -1016,7 +1011,7 @@ mod tests {
     #[test]
     fn deserialize_content_block_delta() {
         let content_block_delta = ContentBlockDeltaChunk {
-            _type: StreamChunkType::ContentBlockDelta,
+            _type: MessageChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
                 text: "text".to_string(),
@@ -1037,7 +1032,7 @@ mod tests {
         assert_eq!(
             ContentBlockStopChunk::default(),
             ContentBlockStopChunk {
-                _type: StreamChunkType::ContentBlockStop,
+                _type: MessageChunkType::ContentBlockStop,
                 index: Default::default(),
             }
         );
@@ -1046,7 +1041,7 @@ mod tests {
     #[test]
     fn display_content_block_stop() {
         let content_block_stop = ContentBlockStopChunk {
-            _type: StreamChunkType::ContentBlockStop,
+            _type: MessageChunkType::ContentBlockStop,
             index: 1,
         };
         assert_eq!(
@@ -1058,7 +1053,7 @@ mod tests {
     #[test]
     fn serialize_content_block_stop() {
         let content_block_stop = ContentBlockStopChunk {
-            _type: StreamChunkType::ContentBlockStop,
+            _type: MessageChunkType::ContentBlockStop,
             index: 1,
         };
         assert_eq!(
@@ -1070,7 +1065,7 @@ mod tests {
     #[test]
     fn deserialize_content_block_stop() {
         let content_block_stop = ContentBlockStopChunk {
-            _type: StreamChunkType::ContentBlockStop,
+            _type: MessageChunkType::ContentBlockStop,
             index: 1,
         };
         assert_eq!(
@@ -1087,7 +1082,7 @@ mod tests {
         assert_eq!(
             MessageDeltaChunk::default(),
             MessageDeltaChunk {
-                _type: StreamChunkType::MessageDelta,
+                _type: MessageChunkType::MessageDelta,
                 delta: Default::default(),
                 usage: Default::default(),
             }
@@ -1097,7 +1092,7 @@ mod tests {
     #[test]
     fn display_message_delta() {
         let message_delta = MessageDeltaChunk {
-            _type: StreamChunkType::MessageDelta,
+            _type: MessageChunkType::MessageDelta,
             delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
@@ -1115,7 +1110,7 @@ mod tests {
     #[test]
     fn serialize_message_delta() {
         let message_delta = MessageDeltaChunk {
-            _type: StreamChunkType::MessageDelta,
+            _type: MessageChunkType::MessageDelta,
             delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
@@ -1133,7 +1128,7 @@ mod tests {
     #[test]
     fn deserialize_message_delta() {
         let message_delta = MessageDeltaChunk {
-            _type: StreamChunkType::MessageDelta,
+            _type: MessageChunkType::MessageDelta,
             delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
@@ -1156,7 +1151,7 @@ mod tests {
         assert_eq!(
             MessageStopChunk::default(),
             MessageStopChunk {
-                _type: StreamChunkType::MessageStop,
+                _type: MessageChunkType::MessageStop,
             }
         );
     }
@@ -1194,7 +1189,7 @@ mod tests {
     #[test]
     fn display_stream_chunk() {
         let message_start = MessageStartChunk {
-            _type: StreamChunkType::MessageStart,
+            _type: MessageChunkType::MessageStart,
             message: MessagesResponseBody {
                 id: "id".to_string(),
                 _type: MessageObjectType::Message,
@@ -1210,7 +1205,7 @@ mod tests {
             },
         };
         let content_block_start = ContentBlockStartChunk {
-            _type: StreamChunkType::ContentBlockStart,
+            _type: MessageChunkType::ContentBlockStart,
             index: 1,
             content_block: TextContentBlock {
                 text: "text".to_string(),
@@ -1219,7 +1214,7 @@ mod tests {
         };
         let ping = PingChunk::default();
         let content_block_delta = ContentBlockDeltaChunk {
-            _type: StreamChunkType::ContentBlockDelta,
+            _type: MessageChunkType::ContentBlockDelta,
             index: 1,
             delta: TextDeltaContentBlock {
                 text: "text".to_string(),
@@ -1227,11 +1222,11 @@ mod tests {
             },
         };
         let content_block_stop = ContentBlockStopChunk {
-            _type: StreamChunkType::ContentBlockStop,
+            _type: MessageChunkType::ContentBlockStop,
             index: 1,
         };
         let message_delta = MessageDeltaChunk {
-            _type: StreamChunkType::MessageDelta,
+            _type: MessageChunkType::MessageDelta,
             delta: StreamStop {
                 stop_reason: Some(StopReason::EndTurn),
                 stop_sequence: Some(StopSequence::new("stop_sequence")),
@@ -1243,37 +1238,37 @@ mod tests {
         let message_stop = MessageStopChunk::default();
 
         assert_eq!(
-            StreamChunk::MessageStart(message_start).to_string(),
+            MessageChunk::MessageStart(message_start).to_string(),
             "event: message_start\ndata: {\"type\": \"message_start\", \"message\": {\"id\": \"id\", \"type\": \"message\", \"role\": \"assistant\", \"content\": \"content\", \"model\": \"claude-3-sonnet-20240229\", \"stop_reason\": \"end_turn\", \"stop_sequence\": \"stop_sequence\", \"usage\": {\"input_tokens\": 1, \"output_tokens\": 2}}}"
         );
 
         assert_eq!(
-            StreamChunk::ContentBlockStart(content_block_start).to_string(),
+            MessageChunk::ContentBlockStart(content_block_start).to_string(),
             "event: content_block_start\ndata: {\"type\": \"content_block_start\", \"index\": 1, \"content_block\": {\"type\": \"text\", \"text\": \"text\"}}"
         );
 
         assert_eq!(
-            StreamChunk::Ping(ping).to_string(),
+            MessageChunk::Ping(ping).to_string(),
             "event: ping\ndata: {\"type\": \"ping\"}",
         );
 
         assert_eq!(
-            StreamChunk::ContentBlockDelta(content_block_delta).to_string(),
+            MessageChunk::ContentBlockDelta(content_block_delta).to_string(),
             "event: content_block_delta\ndata: {\"type\": \"content_block_delta\", \"index\": 1, \"delta\": {\"type\": \"text_delta\", \"text\": \"text\"}}"
         );
 
         assert_eq!(
-            StreamChunk::ContentBlockStop(content_block_stop).to_string(),
+            MessageChunk::ContentBlockStop(content_block_stop).to_string(),
             "event: content_block_stop\ndata: {\"type\": \"content_block_stop\", \"index\": 1}"
         );
 
         assert_eq!(
-            StreamChunk::MessageDelta(message_delta).to_string(),
+            MessageChunk::MessageDelta(message_delta).to_string(),
             "event: message_delta\ndata: {\"type\": \"message_delta\", \"delta\": {\"stop_reason\": \"end_turn\", \"stop_sequence\": \"stop_sequence\"}, \"usage\": {\"output_tokens\": 1}}"
         );
 
         assert_eq!(
-            StreamChunk::MessageStop(message_stop).to_string(),
+            MessageChunk::MessageStop(message_stop).to_string(),
             "event: message_stop\ndata: {\"type\": \"message_stop\"}"
         );
     }
@@ -1281,13 +1276,13 @@ mod tests {
     #[test]
     fn parse_stream_chunk() {
         assert_eq!(
-            StreamChunk::parse(
+            MessageChunk::parse(
                 r#"event: message_start
 data: {"type": "message_start", "message": {"id": "msg_1nZdL29xx5MUA1yADyHTEsnR8uuvGzszyY", "type": "message", "role": "assistant", "content": [], "model": "claude-3-opus-20240229", "stop_reason": null, "stop_sequence": null, "usage": {"input_tokens": 25, "output_tokens": 1}}}"#
             )
             .unwrap(),
-            StreamChunk::MessageStart(MessageStartChunk {
-                _type: StreamChunkType::MessageStart,
+            MessageChunk::MessageStart(MessageStartChunk {
+                _type: MessageChunkType::MessageStart,
                 message: MessagesResponseBody {
                     id: "msg_1nZdL29xx5MUA1yADyHTEsnR8uuvGzszyY".to_string(),
                     _type: MessageObjectType::Message,
@@ -1305,10 +1300,10 @@ data: {"type": "message_start", "message": {"id": "msg_1nZdL29xx5MUA1yADyHTEsnR8
         );
 
         assert_eq!(
-            StreamChunk::parse(r#"event: content_block_start
+            MessageChunk::parse(r#"event: content_block_start
 data: {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}"#).unwrap(),
-            StreamChunk::ContentBlockStart(ContentBlockStartChunk {
-                _type: StreamChunkType::ContentBlockStart,
+            MessageChunk::ContentBlockStart(ContentBlockStartChunk {
+                _type: MessageChunkType::ContentBlockStart,
                 index: 0,
                 content_block: TextContentBlock {
                     text: "".to_string(),
@@ -1318,22 +1313,22 @@ data: {"type": "content_block_start", "index": 0, "content_block": {"type": "tex
         );
 
         assert_eq!(
-            StreamChunk::parse(
+            MessageChunk::parse(
                 r#"event: ping
 data: {"type": "ping"}"#
             )
             .unwrap(),
-            StreamChunk::Ping(PingChunk::default())
+            MessageChunk::Ping(PingChunk::default())
         );
 
         assert_eq!(
-            StreamChunk::parse(
+            MessageChunk::parse(
                 r#"event: content_block_delta
 data: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hello"}}"#
             )
             .unwrap(),
-            StreamChunk::ContentBlockDelta(ContentBlockDeltaChunk {
-                _type: StreamChunkType::ContentBlockDelta,
+            MessageChunk::ContentBlockDelta(ContentBlockDeltaChunk {
+                _type: MessageChunkType::ContentBlockDelta,
                 index: 0,
                 delta: TextDeltaContentBlock {
                     text: "Hello".to_string(),
@@ -1343,25 +1338,25 @@ data: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta"
         );
 
         assert_eq!(
-            StreamChunk::parse(
+            MessageChunk::parse(
                 r#"event: content_block_stop
 data: {"type": "content_block_stop", "index": 0}"#
             )
             .unwrap(),
-            StreamChunk::ContentBlockStop(ContentBlockStopChunk {
-                _type: StreamChunkType::ContentBlockStop,
+            MessageChunk::ContentBlockStop(ContentBlockStopChunk {
+                _type: MessageChunkType::ContentBlockStop,
                 index: 0,
             })
         );
 
         assert_eq!(
-            StreamChunk::parse(
+            MessageChunk::parse(
                r#"event: message_delta
 data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": null}, "usage": {"output_tokens": 15}}"#
             )
             .unwrap(),
-            StreamChunk::MessageDelta(MessageDeltaChunk {
-                _type: StreamChunkType::MessageDelta,
+            MessageChunk::MessageDelta(MessageDeltaChunk {
+                _type: MessageChunkType::MessageDelta,
                 delta: StreamStop {
                     stop_reason: Some(StopReason::EndTurn),
                     stop_sequence: None,
@@ -1373,17 +1368,14 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
         );
 
         assert_eq!(
-            StreamChunk::parse(
+            MessageChunk::parse(
                 r#"event: message_stop
 data: {"type": "message_stop"}"#
             )
             .unwrap(),
-            StreamChunk::MessageStop(MessageStopChunk::default())
+            MessageChunk::MessageStop(MessageStopChunk::default())
         );
 
-        assert!(matches!(
-            StreamChunk::parse("event: unknown\ndata: {}"),
-            Err(StreamError::ParseChunkStringError(_))
-        ));
+        assert!(MessageChunk::parse("event: unknown\ndata: {}").is_err());
     }
 }

@@ -1,4 +1,5 @@
 use crate::{ApiError, ClientError};
+use std::fmt::Display;
 
 /// The error type for the messages API.
 #[derive(Debug, thiserror::Error)]
@@ -10,7 +11,7 @@ pub enum MessagesError {
     #[error(transparent)]
     ApiError(#[from] ApiError),
     /// Stream option mismatch.
-    #[error("stream option mismatch")]
+    #[error("Stream option mismatch")]
     StreamOptionMismatch,
 }
 
@@ -23,12 +24,34 @@ pub enum StreamError {
     /// String decoding error.
     #[error(transparent)]
     StringDecodingError(#[from] std::string::FromUtf8Error),
+    /// Chunk type error.
+    #[error(transparent)]
+    MessageChunkTypeError(#[from] MessageChunkTypeError),
     /// Parse chunk string error.
-    #[error("parse chunk string error: {0}")]
+    #[error("Parse chunk string error: {0}")]
     ParseChunkStringError(String),
     /// Chunk data deserialization error.
     #[error(transparent)]
     ChunkDataDeserializationError(#[from] serde_json::Error),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub struct MessageChunkTypeError {
+    /// The actual chunk type.
+    pub chunk_type: String,
+}
+
+impl Display for MessageChunkTypeError {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(
+            f,
+            "Not supported message chunk type: {}",
+            self.chunk_type
+        )
+    }
 }
 
 /// The error type for the text content extraction from response body of the Messages API.

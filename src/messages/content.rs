@@ -3,7 +3,7 @@ use crate::macros::{
     impl_enum_struct_serialization,
     impl_enum_with_string_or_array_serialization,
 };
-use crate::messages::ImageMediaTypeParseError;
+use crate::messages::{ImageMediaTypeParseError, TextContentExtractionError};
 
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -78,6 +78,29 @@ impl_enum_with_string_or_array_serialization!(
 );
 
 impl_display_for_serialize!(Content);
+
+impl Content {
+    /// Flattens the content into a single text.
+    /// - `Content::SingleText` => Returns "`Ok(text)`"
+    /// - `Content::MultipleBlock` =>
+    ///     - Has `ContentBlock::Text` at the first block => Returns "`Ok(text)`"
+    ///     - Otherwise => Returns "`Err(TextContentExtractionError)`".
+    pub fn text(&self) -> Result<&str, TextContentExtractionError> {
+        match self {
+            | Content::SingleText(text) => Ok(text),
+            | Content::MultipleBlock(block) => {
+                if let Some(first) = block.first() {
+                    match first {
+                        | ContentBlock::Text(text) => Ok(&text.text),
+                        | _ => Err(TextContentExtractionError::NotTextBlock),
+                    }
+                } else {
+                    Err(TextContentExtractionError::Empty)
+                }
+            },
+        }
+    }
+}
 
 /// The content block of the message.
 #[derive(Debug, Clone, PartialEq)]
@@ -639,13 +662,11 @@ mod tests {
         let path = PathBuf::from("image");
         assert!(ImageMediaType::from_path(&path).is_err());
     }
-    
+
     #[test]
     fn new_image_content_source() {
-        let image_content_source = ImageContentSource::base64(
-            ImageMediaType::Jpeg,
-            "data",
-        );
+        let image_content_source =
+            ImageContentSource::base64(ImageMediaType::Jpeg, "data");
         assert_eq!(
             image_content_source,
             ImageContentSource {

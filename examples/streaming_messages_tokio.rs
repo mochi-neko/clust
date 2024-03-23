@@ -13,7 +13,7 @@ use clust::messages::Message;
 use clust::messages::MessagesRequestBody;
 use clust::messages::SystemPrompt;
 use clust::messages::{ClaudeModel, StreamOption};
-use clust::messages::{MaxTokens, StreamChunk};
+use clust::messages::{MaxTokens, MessageChunk};
 use clust::Client;
 
 use clap::Parser;
@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
             | Ok(chunk) => {
                 println!("Chunk:\n{}", chunk);
                 match chunk {
-                    | StreamChunk::ContentBlockDelta(content_block_delta) => {
+                    | MessageChunk::ContentBlockDelta(content_block_delta) => {
                         buffer.push_str(&content_block_delta.delta.text);
                     },
                     | _ => {},

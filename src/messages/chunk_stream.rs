@@ -5,7 +5,7 @@ use bytes::{Buf, BytesMut};
 use futures_core::Stream;
 use pin_project::pin_project;
 
-use crate::messages::{ChunkStreamResult, StreamChunk, StreamError};
+use crate::messages::{ChunkStreamResult, MessageChunk, StreamError};
 
 /// The stream item of the reqwest response.
 type ReqwestStreamItem = Result<bytes::Bytes, reqwest::Error>;
@@ -73,7 +73,7 @@ where
                         let chunk = String::from_utf8(chunk)
                             .map_err(StreamError::StringDecodingError)?;
 
-                        let chunk = StreamChunk::parse(&chunk)?;
+                        let chunk = MessageChunk::parse(&chunk)?;
                         return Poll::Ready(Some(Ok(chunk)));
                     }
                 }
@@ -104,7 +104,7 @@ where
                         let remaining =
                             String::from_utf8(remaining.to_vec())
                                 .map_err(StreamError::StringDecodingError)?;
-                        let chunk = StreamChunk::parse(&remaining)?;
+                        let chunk = MessageChunk::parse(&remaining)?;
                         Poll::Ready(Some(Ok(chunk)))
                     };
                 },
@@ -159,7 +159,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::MessageStart(message_start) => {
+            | MessageChunk::MessageStart(message_start) => {
                 assert_eq!(
                     message_start,
                     MessageStartChunk::new(MessagesResponseBody {
@@ -187,7 +187,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockStart(content_block_start) => {
+            | MessageChunk::ContentBlockStart(content_block_start) => {
                 assert_eq!(
                     content_block_start,
                     ContentBlockStartChunk::new(0, "".into()),
@@ -202,7 +202,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::Ping(ping) => {
+            | MessageChunk::Ping(ping) => {
                 assert_eq!(ping, PingChunk::new());
             },
             | _ => panic!("unexpected chunk type"),
@@ -214,7 +214,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockDelta(content_block_delta) => {
+            | MessageChunk::ContentBlockDelta(content_block_delta) => {
                 assert_eq!(
                     content_block_delta,
                     ContentBlockDeltaChunk::new(0, "Hello".into()),
@@ -229,7 +229,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockDelta(content_block_delta) => {
+            | MessageChunk::ContentBlockDelta(content_block_delta) => {
                 assert_eq!(
                     content_block_delta,
                     ContentBlockDeltaChunk::new(0, "!".into()),
@@ -244,7 +244,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockStop(content_block_stop) => {
+            | MessageChunk::ContentBlockStop(content_block_stop) => {
                 assert_eq!(
                     content_block_stop,
                     ContentBlockStopChunk::new(0),
@@ -259,7 +259,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::MessageDelta(message_delta) => {
+            | MessageChunk::MessageDelta(message_delta) => {
                 assert_eq!(
                     message_delta,
                     MessageDeltaChunk::new(
@@ -321,7 +321,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::MessageStart(message_start) => {
+            | MessageChunk::MessageStart(message_start) => {
                 assert_eq!(
                     message_start,
                     MessageStartChunk::new(MessagesResponseBody {
@@ -349,7 +349,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockStart(content_block_start) => {
+            | MessageChunk::ContentBlockStart(content_block_start) => {
                 assert_eq!(
                     content_block_start,
                     ContentBlockStartChunk::new(0, "".into()),
@@ -364,7 +364,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::Ping(ping) => {
+            | MessageChunk::Ping(ping) => {
                 assert_eq!(ping, PingChunk::new());
             },
             | _ => panic!("unexpected chunk type"),
@@ -376,7 +376,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockDelta(content_block_delta) => {
+            | MessageChunk::ContentBlockDelta(content_block_delta) => {
                 assert_eq!(
                     content_block_delta,
                     ContentBlockDeltaChunk::new(0, "Hello".into()),
@@ -391,7 +391,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockDelta(content_block_delta) => {
+            | MessageChunk::ContentBlockDelta(content_block_delta) => {
                 assert_eq!(
                     content_block_delta,
                     ContentBlockDeltaChunk::new(0, "!".into()),
@@ -406,7 +406,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::ContentBlockStop(content_block_stop) => {
+            | MessageChunk::ContentBlockStop(content_block_stop) => {
                 assert_eq!(
                     content_block_stop,
                     ContentBlockStopChunk::new(0),
@@ -421,7 +421,7 @@ data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_seque
             .unwrap()
             .unwrap();
         match chunk {
-            | StreamChunk::MessageDelta(message_delta) => {
+            | MessageChunk::MessageDelta(message_delta) => {
                 assert_eq!(
                     message_delta,
                     MessageDeltaChunk::new(
