@@ -59,7 +59,12 @@ async fn main() -> anyhow::Result<()> {
     println!("Result:\n{}", response);
 
     // 4. Use the text content.
-    println!("Content: {}", response.text()?);
+    println!(
+        "Content: {}",
+        response
+            .content
+            .flatten_into_text()?
+    );
 
     Ok(())
 }

@@ -1,12 +1,12 @@
+use std::fmt::{Display, Formatter};
+
 use crate::macros::{
     impl_display_for_serialize, impl_enum_string_serialization,
 };
 use crate::messages::{
-    ClaudeModel, Content, ContentBlock, Message, Role, StopReason,
-    StopSequence, TextContentExtractionError, Usage,
+    ClaudeModel, Content, Message, Role, StopReason,
+    StopSequence, Usage,
 };
-
-use std::fmt::{Display, Formatter};
 
 /// The response body for the Messages API.
 ///
@@ -75,30 +75,6 @@ impl Default for MessagesResponseBody {
 impl_display_for_serialize!(MessagesResponseBody);
 
 impl MessagesResponseBody {
-    /// Returns result to extract text content for `MessagesResponseBody.content` as following patterns:
-    /// - `Content::SingleText` => Returns "`Ok(text)`"
-    /// - `Content::MultipleBlock` =>
-    ///     - Has `ContentBlock::Text` or `ContentBlock::TextDelta` at the first block => Returns "`Ok(text)`"
-    ///     - Otherwise => Returns "`Err(TextContentExtractionError)`".
-    pub fn text(&self) -> Result<&str, TextContentExtractionError> {
-        match &self.content {
-            | Content::SingleText(text) => Ok(text),
-            | Content::MultipleBlock(block) => {
-                if let Some(first) = block.first() {
-                    match first {
-                        | ContentBlock::Text(text) => Ok(&text.text),
-                        | ContentBlock::Image(_) => {
-                            Err(TextContentExtractionError::NotTextBlock)
-                        },
-                        | ContentBlock::TextDelta(delta) => Ok(&delta.text),
-                    }
-                } else {
-                    Err(TextContentExtractionError::Empty)
-                }
-            },
-        }
-    }
-
     /// Creates `Message` from the response body.
     pub fn crate_message(self) -> Message {
         Message {
@@ -139,8 +115,9 @@ impl_enum_string_serialization!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::messages::*;
+
+    use super::*;
 
     #[test]
     fn serialize() {
@@ -238,37 +215,7 @@ mod tests {
             MessageObjectType::Message
         );
     }
-
-    #[test]
-    fn text() {
-        let response = MessagesResponseBody {
-            content: Content::from("content"),
-            ..Default::default()
-        };
-
-        assert_eq!(response.text().unwrap(), "content");
-
-        let response = MessagesResponseBody {
-            content: Content::from(vec![
-                ContentBlock::from("first"),
-                ContentBlock::from("second"),
-            ]),
-            ..Default::default()
-        };
-
-        assert_eq!(response.text().unwrap(), "first");
-
-        let response = MessagesResponseBody {
-            content: Content::from(ImageContentSource::base64(
-                ImageMediaType::Png,
-                "source",
-            )),
-            ..Default::default()
-        };
-
-        assert!(response.text().is_err());
-    }
-
+    
     #[test]
     fn create_message() {
         let response = MessagesResponseBody {

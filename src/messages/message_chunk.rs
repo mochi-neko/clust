@@ -6,8 +6,8 @@ use crate::macros::{
     impl_display_for_serialize, impl_enum_string_serialization,
 };
 use crate::messages::{
-    MessageChunkTypeError, MessagesResponseBody, StopReason, StopSequence,
-    StreamError, TextContentBlock, TextDeltaContentBlock,
+    ContentType, MessageChunkTypeError, MessagesResponseBody, StopReason,
+    StopSequence, StreamError, TextContentBlock,
 };
 
 /// The stream chunk of messages.
@@ -503,6 +503,52 @@ impl MessageStopChunk {
     pub fn new() -> Self {
         Self {
             _type: MessageChunkType::MessageStop,
+        }
+    }
+}
+
+/// The text delta content block.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct TextDeltaContentBlock {
+    /// The content type. It is always `text_delta`.
+    #[serde(rename = "type")]
+    pub _type: ContentType,
+    /// The text delta content.
+    pub text: String,
+}
+
+impl Default for TextDeltaContentBlock {
+    fn default() -> Self {
+        Self {
+            _type: ContentType::TextDelta,
+            text: String::new(),
+        }
+    }
+}
+
+impl_display_for_serialize!(TextDeltaContentBlock);
+
+impl From<String> for TextDeltaContentBlock {
+    fn from(text: String) -> Self {
+        Self::new(text)
+    }
+}
+
+impl From<&str> for TextDeltaContentBlock {
+    fn from(text: &str) -> Self {
+        Self::new(text)
+    }
+}
+
+impl TextDeltaContentBlock {
+    /// Creates a new text delta content block.
+    pub(crate) fn new<S>(text: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            _type: ContentType::TextDelta,
+            text: text.into(),
         }
     }
 }
@@ -1377,5 +1423,76 @@ data: {"type": "message_stop"}"#
         );
 
         assert!(MessageChunk::parse("event: unknown\ndata: {}").is_err());
+    }
+
+    #[test]
+    fn new_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            text_delta_content_block,
+            TextDeltaContentBlock {
+                _type: ContentType::TextDelta,
+                text: "text".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn default_text_delta_content_block() {
+        assert_eq!(
+            TextDeltaContentBlock::default(),
+            TextDeltaContentBlock {
+                _type: ContentType::TextDelta,
+                text: String::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn display_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            text_delta_content_block.to_string(),
+            "{\n  \"type\": \"text_delta\",\n  \"text\": \"text\"\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            serde_json::to_string(&text_delta_content_block).unwrap(),
+            "{\"type\":\"text_delta\",\"text\":\"text\"}"
+        );
+    }
+
+    #[test]
+    fn deserialize_text_delta_content_block() {
+        let text_delta_content_block =
+            TextDeltaContentBlock::new("text".to_string());
+        assert_eq!(
+            serde_json::from_str::<TextDeltaContentBlock>(
+                "{\"type\":\"text_delta\",\"text\":\"text\"}"
+            )
+            .unwrap(),
+            text_delta_content_block
+        );
+    }
+
+    #[test]
+    fn from_text_delta_content_block() {
+        assert_eq!(
+            TextDeltaContentBlock::from("text"),
+            TextDeltaContentBlock::new("text")
+        );
+
+        let content_block: TextDeltaContentBlock = "text".into();
+        assert_eq!(
+            content_block,
+            TextDeltaContentBlock::new("text")
+        );
     }
 }

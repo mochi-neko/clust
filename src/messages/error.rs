@@ -54,15 +54,15 @@ impl Display for MessageChunkTypeError {
     }
 }
 
-/// The error type for the text content extraction from response body of the Messages API.
+/// The error type for the content flattening.
 #[derive(Debug, PartialEq, thiserror::Error)]
-pub enum TextContentExtractionError {
+pub enum ContentFlatteningError {
     /// The multiple content blocks is empty.
     #[error("The multiple content block is empty")]
     Empty,
-    /// The first content block in multiple blocks is not a text block or text delta block.
-    #[error("The first content block in multiple blocks is not a text block or text delta block")]
-    NotTextBlock,
+    /// Not found target block.
+    #[error("Not found target block")]
+    NotFoundTargetBlock,
 }
 
 /// The error type for parsing the image media type from an extension in a path.

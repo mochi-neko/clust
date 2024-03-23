@@ -3,7 +3,7 @@ use crate::macros::{
     impl_enum_struct_serialization,
     impl_enum_with_string_or_array_serialization,
 };
-use crate::messages::{ImageMediaTypeParseError, TextContentExtractionError};
+use crate::messages::{ContentFlatteningError, ImageMediaTypeParseError};
 
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -85,18 +85,37 @@ impl Content {
     /// - `Content::MultipleBlock` =>
     ///     - Has `ContentBlock::Text` at the first block => Returns "`Ok(text)`"
     ///     - Otherwise => Returns "`Err(TextContentExtractionError)`".
-    pub fn text(&self) -> Result<&str, TextContentExtractionError> {
+    pub fn flatten_into_text(&self) -> Result<&str, ContentFlatteningError> {
         match self {
             | Content::SingleText(text) => Ok(text),
-            | Content::MultipleBlock(block) => {
-                if let Some(first) = block.first() {
-                    match first {
-                        | ContentBlock::Text(text) => Ok(&text.text),
-                        | _ => Err(TextContentExtractionError::NotTextBlock),
-                    }
-                } else {
-                    Err(TextContentExtractionError::Empty)
-                }
+            | Content::MultipleBlock(block) => match block.first() {
+                | Some(first) => match first {
+                    | ContentBlock::Text(text) => Ok(&text.text),
+                    | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
+                },
+                | None => Err(ContentFlatteningError::Empty),
+            },
+        }
+    }
+
+    /// Flattens the content into a single image source.
+    /// - `Content::SingleText` => Returns "`Err(NotFoundTargetBlock)`"
+    /// - `Content::MultipleBlock` =>
+    ///     - Has `ContentBlock::Image` at the first block => Returns "`Ok(image_source)`"
+    ///     - Otherwise => Returns "`Err(NotFoundTargetBlock)`".
+    pub fn flatten_into_image_source(
+        &self
+    ) -> Result<&ImageContentSource, ContentFlatteningError> {
+        match self {
+            | Content::SingleText(_) => {
+                Err(ContentFlatteningError::NotFoundTargetBlock)
+            },
+            | Content::MultipleBlock(block) => match block.first() {
+                | Some(first) => match first {
+                    | ContentBlock::Image(image) => Ok(&image.source),
+                    | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
+                },
+                | None => Err(ContentFlatteningError::Empty),
             },
         }
     }
@@ -109,8 +128,6 @@ pub enum ContentBlock {
     Text(TextContentBlock),
     /// The image content block.
     Image(ImageContentBlock),
-    /// The text delta content block.
-    TextDelta(TextDeltaContentBlock),
 }
 
 impl Default for ContentBlock {
@@ -141,8 +158,7 @@ impl_enum_struct_serialization!(
     ContentBlock,
     type,
     Text(TextContentBlock, "text"),
-    Image(ImageContentBlock, "image"),
-    TextDelta(TextDeltaContentBlock, "text_delta")
+    Image(ImageContentBlock, "image")
 );
 
 impl_display_for_serialize!(ContentBlock);
@@ -413,52 +429,6 @@ impl ImageMediaType {
                 extension.to_string(),
             )),
             | None => Err(ImageMediaTypeParseError::NotFound),
-        }
-    }
-}
-
-/// The text delta content block.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct TextDeltaContentBlock {
-    /// The content type. It is always `text_delta`.
-    #[serde(rename = "type")]
-    pub _type: ContentType,
-    /// The text delta content.
-    pub text: String,
-}
-
-impl Default for TextDeltaContentBlock {
-    fn default() -> Self {
-        Self {
-            _type: ContentType::TextDelta,
-            text: String::new(),
-        }
-    }
-}
-
-impl_display_for_serialize!(TextDeltaContentBlock);
-
-impl From<String> for TextDeltaContentBlock {
-    fn from(text: String) -> Self {
-        Self::new(text)
-    }
-}
-
-impl From<&str> for TextDeltaContentBlock {
-    fn from(text: &str) -> Self {
-        Self::new(text)
-    }
-}
-
-impl TextDeltaContentBlock {
-    /// Creates a new text delta content block.
-    pub(crate) fn new<S>(text: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self {
-            _type: ContentType::TextDelta,
-            text: text.into(),
         }
     }
 }
@@ -839,77 +809,6 @@ mod tests {
     }
 
     #[test]
-    fn new_text_delta_content_block() {
-        let text_delta_content_block =
-            TextDeltaContentBlock::new("text".to_string());
-        assert_eq!(
-            text_delta_content_block,
-            TextDeltaContentBlock {
-                _type: ContentType::TextDelta,
-                text: "text".to_string(),
-            }
-        );
-    }
-
-    #[test]
-    fn default_text_delta_content_block() {
-        assert_eq!(
-            TextDeltaContentBlock::default(),
-            TextDeltaContentBlock {
-                _type: ContentType::TextDelta,
-                text: String::new(),
-            }
-        );
-    }
-
-    #[test]
-    fn display_text_delta_content_block() {
-        let text_delta_content_block =
-            TextDeltaContentBlock::new("text".to_string());
-        assert_eq!(
-            text_delta_content_block.to_string(),
-            "{\n  \"type\": \"text_delta\",\n  \"text\": \"text\"\n}"
-        );
-    }
-
-    #[test]
-    fn serialize_text_delta_content_block() {
-        let text_delta_content_block =
-            TextDeltaContentBlock::new("text".to_string());
-        assert_eq!(
-            serde_json::to_string(&text_delta_content_block).unwrap(),
-            "{\"type\":\"text_delta\",\"text\":\"text\"}"
-        );
-    }
-
-    #[test]
-    fn deserialize_text_delta_content_block() {
-        let text_delta_content_block =
-            TextDeltaContentBlock::new("text".to_string());
-        assert_eq!(
-            serde_json::from_str::<TextDeltaContentBlock>(
-                "{\"type\":\"text_delta\",\"text\":\"text\"}"
-            )
-            .unwrap(),
-            text_delta_content_block
-        );
-    }
-
-    #[test]
-    fn from_text_delta_content_block() {
-        assert_eq!(
-            TextDeltaContentBlock::from("text"),
-            TextDeltaContentBlock::new("text")
-        );
-
-        let content_block: TextDeltaContentBlock = "text".into();
-        assert_eq!(
-            content_block,
-            TextDeltaContentBlock::new("text")
-        );
-    }
-
-    #[test]
     fn new_content_block() {
         let content_block = ContentBlock::Text(TextContentBlock::new(
             "text".to_string(),
@@ -930,17 +829,6 @@ mod tests {
             ContentBlock::Image(ImageContentBlock {
                 _type: ContentType::Image,
                 source: ImageContentSource::default(),
-            })
-        );
-
-        let content_block = ContentBlock::TextDelta(
-            TextDeltaContentBlock::new("text".to_string()),
-        );
-        assert_eq!(
-            content_block,
-            ContentBlock::TextDelta(TextDeltaContentBlock {
-                _type: ContentType::TextDelta,
-                text: "text".to_string(),
             })
         );
     }
@@ -970,14 +858,6 @@ mod tests {
             content_block.to_string(),
             "{\n  \"type\": \"image\",\n  \"source\": {\n    \"type\": \"base64\",\n    \"media_type\": \"image/jpeg\",\n    \"data\": \"\"\n  }\n}"
         );
-
-        let content_block = ContentBlock::TextDelta(
-            TextDeltaContentBlock::new("text".to_string()),
-        );
-        assert_eq!(
-            content_block.to_string(),
-            "{\n  \"type\": \"text_delta\",\n  \"text\": \"text\"\n}"
-        );
     }
 
     #[test]
@@ -996,14 +876,6 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&content_block).unwrap(),
             "{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}"
-        );
-
-        let content_block = ContentBlock::TextDelta(
-            TextDeltaContentBlock::new("text".to_string()),
-        );
-        assert_eq!(
-            serde_json::to_string(&content_block).unwrap(),
-            "{\"type\":\"text_delta\",\"text\":\"text\"}"
         );
     }
 
@@ -1025,17 +897,6 @@ mod tests {
         ));
         assert_eq!(
             serde_json::from_str::<ContentBlock>("{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}").unwrap(),
-            content_block
-        );
-
-        let content_block = ContentBlock::TextDelta(
-            TextDeltaContentBlock::new("text".to_string()),
-        );
-        assert_eq!(
-            serde_json::from_str::<ContentBlock>(
-                "{\"type\":\"text_delta\",\"text\":\"text\"}"
-            )
-            .unwrap(),
             content_block
         );
     }
@@ -1212,6 +1073,95 @@ mod tests {
             Content::MultipleBlock(vec![ContentBlock::Image(
                 ImageContentBlock::new(ImageContentSource::default())
             )])
+        );
+    }
+
+    #[test]
+    fn flatten_into_text() {
+        assert_eq!(
+            Content::from("text")
+                .flatten_into_text()
+                .unwrap(),
+            "text"
+        );
+
+        assert_eq!(
+            Content::from(vec![
+                ContentBlock::from("text"),
+                ContentBlock::from(ImageContentSource::default()),
+            ])
+            .flatten_into_text()
+            .unwrap(),
+            "text"
+        );
+
+        assert_eq!(
+            Content::from(vec![
+                ContentBlock::from("text"),
+                ContentBlock::from("second"),
+            ])
+            .flatten_into_text()
+            .unwrap(),
+            "text"
+        );
+
+        assert!(Content::from(vec![])
+            .flatten_into_text()
+            .is_err());
+
+        assert!(
+            Content::from(ImageContentSource::default())
+                .flatten_into_text()
+                .is_err()
+        );
+
+        assert!(Content::from(vec![
+            ContentBlock::from(ImageContentSource::default()),
+            ContentBlock::from("text"),
+        ])
+        .flatten_into_text()
+        .is_err());
+    }
+
+    #[test]
+    fn flatten_into_image_source() {
+        assert!(Content::from("text")
+            .flatten_into_image_source()
+            .is_err());
+
+        assert!(Content::from(vec![
+            ContentBlock::from("text"),
+            ContentBlock::from(ImageContentSource::default()),
+        ])
+        .flatten_into_image_source()
+        .is_err());
+
+        assert!(Content::from(vec![
+            ContentBlock::from("text"),
+            ContentBlock::from("second"),
+        ])
+        .flatten_into_image_source()
+        .is_err());
+
+        assert!(Content::from(vec![])
+            .flatten_into_image_source()
+            .is_err());
+
+        assert_eq!(
+            *Content::from(ImageContentSource::default())
+                .flatten_into_image_source()
+                .unwrap(),
+            ImageContentSource::default()
+        );
+
+        assert_eq!(
+            *Content::from(vec![
+                ContentBlock::from(ImageContentSource::default()),
+                ContentBlock::from("text"),
+            ])
+            .flatten_into_image_source()
+            .unwrap(),
+            ImageContentSource::default()
         );
     }
 }

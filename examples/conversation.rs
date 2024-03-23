@@ -61,7 +61,12 @@ async fn main() -> anyhow::Result<()> {
     println!("First result:\n{}", response);
 
     // 4. Use the first text content.
-    println!("First content: {}", response.text()?);
+    println!(
+        "First content: {}",
+        response
+            .content
+            .flatten_into_text()?
+    );
 
     // 5. Store the assistant message of the first conversation.
     request_body
@@ -81,7 +86,12 @@ async fn main() -> anyhow::Result<()> {
     println!("Second result:\n{}", response);
 
     // 8. Use the second text content.
-    println!("Second content: {}", response.text()?);
+    println!(
+        "Second content: {}",
+        response
+            .content
+            .flatten_into_text()?
+    );
 
     // 9. Store the assistant message of the second conversation.
     request_body
