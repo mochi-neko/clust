@@ -55,12 +55,10 @@ async fn main() -> anyhow::Result<()> {
 
     // 3. Create a request body.
     let model = ClaudeModel::Claude3Sonnet20240229;
-    let messages = vec![Message::user(
-        Content::from(vec![
-            ContentBlock::from(image_source),
-            ContentBlock::from(arguments.message),
-        ]),
-    )];
+    let messages = vec![Message::user(vec![
+        ContentBlock::from(image_source),
+        ContentBlock::from(arguments.message),
+    ])];
     let max_tokens = MaxTokens::new(1024, model)?;
     let system_prompt = SystemPrompt::new(arguments.prompt);
     let request_body = MessagesRequestBody {

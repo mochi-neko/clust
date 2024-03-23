@@ -9,11 +9,13 @@
 //! $ cargo run --example streaming_messages_tokio -- -p "You are a excellent AI assistant." -m "Where is the capital of Japan?"
 //! ```
 
+use clust::messages::ClaudeModel;
+use clust::messages::MaxTokens;
 use clust::messages::Message;
+use clust::messages::MessageChunk;
 use clust::messages::MessagesRequestBody;
+use clust::messages::StreamOption;
 use clust::messages::SystemPrompt;
-use clust::messages::{ClaudeModel, StreamOption};
-use clust::messages::{MaxTokens, MessageChunk};
 use clust::Client;
 
 use clap::Parser;

@@ -15,10 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add the text extraction method for `MessagesResponseBody`: `MessagesResponseBody::text()`.
-- Add the assistant message creation method for `MessagesResponseBody`: `MessagesResponseBody::create_message()`.
+- Add text flattening method for `Content`: `Content::flatten_into_text()`.
+- Add image source flattening method for `Content`: `Content::flatten_into_image_source()`.
+- Add assistant message creation method for `MessagesResponseBody`: `MessagesResponseBody::create_message()`.
 - Add an example to create a message with vision.
 - Add an example to converse with the assistant.
+
+### Changed
+
+- Rename `StreamChunk` to `MessageChunk`.
+- Improve initialization and conversion methods for `Content` and `Message`.
+
+### Fixed
+
+- Fix default value of the `role` field in the `MessagesResponseBody` from `Role::user` to `Role::assistant`.
 
 ## [0.5.0] - 2024-03-18
 
