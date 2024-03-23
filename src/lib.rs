@@ -301,14 +301,14 @@
 //! }
 //! ```
 //!
-//! ### Streaming messages
+//! ### Streaming messages with `tokio` backend
 //! An example of creating a message stream with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`
 //!
 //! ```env
 //! ANTHROPIC_API_KEY={your-api-key}
 //! ```
 //!
-//! with [futures_util](https://crates.io/crates/futures-util) is as follows:
+//! with [tokio-stream](https://docs.rs/tokio-stream/latest/tokio_stream/) is as follows:
 //!
 //! ```rust,no_run
 //! use clust::messages::ClaudeModel;
@@ -320,7 +320,7 @@
 //! use clust::messages::MessageChunk;
 //! use clust::Client;
 //!
-//! use futures_util::StreamExt;
+//! use tokio_stream::StreamExt;
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
@@ -374,16 +374,6 @@
 //!
 //!     Ok(())
 //! }
-//! ```
-//!
-//! ### Streaming messages with `tokio` backend
-//! When you use streaming API with full `tokio` backend,
-//! replace `futures_util::StreamExt` to [tokio_stream::StreamExt](https://docs.rs/tokio-stream/latest/tokio_stream/trait.StreamExt.html)
-//! with [tokio-stream](https://docs.rs/tokio-stream/latest/tokio_stream/).
-//!
-//! ```diff
-//! - use futures_util::StreamExt;
-//! + use tokio_stream::StreamExt;
 //! ```
 //!
 //! See also [examples](./examples) for more details.
