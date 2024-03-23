@@ -75,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
 
     // 7. Re-call the API.
     let response = client
-        .create_a_message(request_body)
+        .create_a_message(request_body.clone())
         .await?;
 
     println!("Second result:\n{}", response);

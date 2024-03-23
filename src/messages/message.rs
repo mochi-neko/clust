@@ -22,20 +22,9 @@ impl Message {
     ///
     /// ## Example
     /// ```rust
-    /// use clust::messages::{Content, ContentBlock, Message, Role, ImageContentSource, ImageMediaType};
+    /// use clust::messages::{Content, Message};
     ///
-    /// let text_content = "user-message";
-    /// let message = Message::user(text_content); // Generics
-    /// let message = Message::user(text_content.into()); // From trait
-    /// let message = Message::user(Content::SingleText(text_content.to_string())); // Manual
-    ///
-    /// let image_content = ImageContentSource::new(
-    ///     ImageMediaType::Png,
-    ///     "base64 encoded image",
-    /// );
-    /// let message = Message::user(image_content.clone()); // Generics
-    /// let message = Message::user(image_content.into()); // From trait
-    /// let message = Message::user(Content::MultipleBlock(vec![ContentBlock::image(image_content.clone())])); // Manual
+    /// let message = Message::user(Content::from("user message"));
     /// ```
     pub fn user<T>(content: T) -> Self
     where
@@ -54,12 +43,9 @@ impl Message {
     ///
     /// ## Example
     /// ```rust
-    /// use clust::messages::{Content, ContentBlock, Message};
-    ///
-    /// let text_content = "assistant-message";
-    /// let message = Message::assistant(text_content); // Generics
-    /// let message = Message::assistant(text_content.into()); // From trait
-    /// let message = Message::assistant(Content::SingleText(text_content.to_string())); // Manual
+    /// use clust::messages::{Content, Message};
+    /// 
+    /// let message = Message::assistant(Content::from("assistant message"));
     /// ```
     pub fn assistant<T>(content: T) -> Self
     where
@@ -79,20 +65,10 @@ impl Message {
     ///
     /// ## Example
     /// ```rust
-    /// use clust::messages::{Content, ContentBlock, Message, Role, ImageContentSource, ImageMediaType};
-    ///
-    /// let text_content = "message";
-    /// let message = Message::new(Role::User, text_content); // Generics
-    /// let message = Message::new(Role::Assistant, text_content.into()); // From trait
-    /// let message = Message::new(Role::Assistant, Content::SingleText(text_content.to_string())); // Manual
-    ///
-    /// let image_content = ImageContentSource::new(
-    ///     ImageMediaType::Png,
-    ///     "base64 encoded image",
-    /// );
-    /// let message = Message::new(Role::User, image_content.clone()); // Generics
-    /// let message = Message::new(Role::User, image_content.into()); // From trait
-    /// let message = Message::new(Role::User, Content::MultipleBlock(vec![ContentBlock::image(image_content.clone())])); // Manual
+    /// use clust::messages::{Content, Message, Role};
+    /// 
+    /// let message = Message::new(Role::User, Content::from("user message"));
+    /// let message = Message::new(Role::Assistant, Content::from("assistant message"));
     /// ```
     pub fn new<T>(
         role: Role,
@@ -122,6 +98,20 @@ mod tests {
     #[test]
     fn assistant() {
         let message = Message::assistant("assistant-message");
+        assert_eq!(message.role, Role::Assistant);
+        assert_eq!(
+            message.content,
+            "assistant-message".into()
+        );
+    }
+    
+    #[test]
+    fn new() {
+        let message = Message::new(Role::User, "user-message");
+        assert_eq!(message.role, Role::User);
+        assert_eq!(message.content, "user-message".into());
+        
+        let message = Message::new(Role::Assistant, "assistant-message");
         assert_eq!(message.role, Role::Assistant);
         assert_eq!(
             message.content,

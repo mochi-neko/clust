@@ -4,10 +4,45 @@ use crate::macros::{
     impl_enum_with_string_or_array_serialization,
 };
 use crate::messages::ImageMediaTypeParseError;
+
 use std::fmt::Display;
 use std::path::PathBuf;
 
 /// The content of the message.
+///
+/// ## Example
+/// ```rust
+/// use clust::messages::{Content, ContentBlock, ImageContentBlock, ImageContentSource, ImageMediaType, TextContentBlock};
+///
+/// // Manual
+/// let content = Content::SingleText("text".to_string());
+/// let content = Content::MultipleBlock(vec![ContentBlock::Text(TextContentBlock::new("text"))]);
+/// let content = Content::MultipleBlock(vec![
+///     ContentBlock::Image(ImageContentBlock::new(ImageContentSource::base64(ImageMediaType::Png, "base64")))
+/// ]);
+/// let content = Content::MultipleBlock(vec![
+///     ContentBlock::Text(TextContentBlock::new("text")),
+///     ContentBlock::Image(ImageContentBlock::new(ImageContentSource::base64(ImageMediaType::Png, "base64"))),
+/// ]);
+///
+/// // From trait
+/// let content = Content::from("text");
+/// let content = Content::from(vec![ContentBlock::from("text")]);
+/// let content = Content::from(ImageContentSource::base64(ImageMediaType::Png, "base64"));
+/// let content = Content::from(vec![
+///     ContentBlock::from("text"),
+///     ContentBlock::from(ImageContentSource::base64(ImageMediaType::Png, "base64")),
+/// ]);
+///
+/// // Into trait
+/// let content: Content = "text".into();
+/// let content: Content = vec![ContentBlock::from("text")].into();
+/// let content: Content = ImageContentSource::base64(ImageMediaType::Png, "base64").into();
+/// let content: Content = vec![
+///     "text".into(),
+///     ImageContentSource::base64(ImageMediaType::Png, "base64").into(),
+/// ].into();
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Content {
     /// The single text content.
@@ -44,15 +79,6 @@ impl_enum_with_string_or_array_serialization!(
 
 impl_display_for_serialize!(Content);
 
-impl Content {
-    pub fn new<T>(content: T) -> Self
-    where
-        T: Into<Content>,
-    {
-        content.into()
-    }
-}
-
 /// The content block of the message.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ContentBlock {
@@ -70,15 +96,21 @@ impl Default for ContentBlock {
     }
 }
 
+impl From<String> for ContentBlock {
+    fn from(text: String) -> Self {
+        Self::Text(TextContentBlock::new(text))
+    }
+}
+
 impl From<&str> for ContentBlock {
     fn from(text: &str) -> Self {
-        Self::Text(text.into())
+        Self::Text(TextContentBlock::new(text))
     }
 }
 
 impl From<ImageContentSource> for ContentBlock {
     fn from(image: ImageContentSource) -> Self {
-        Self::Image(image.into())
+        Self::Image(ImageContentBlock::new(image))
     }
 }
 
@@ -91,40 +123,6 @@ impl_enum_struct_serialization!(
 );
 
 impl_display_for_serialize!(ContentBlock);
-
-impl ContentBlock {
-    /// Creates a new content block from a text.
-    pub fn text<T>(text: T) -> Self
-    where
-        T: Into<TextContentBlock>,
-    {
-        Self::Text(text.into())
-    }
-
-    /// Creates a new content block from an image source.
-    pub fn image<T>(image: T) -> Self
-    where
-        T: Into<ImageContentBlock>,
-    {
-        Self::Image(image.into())
-    }
-
-    /// Creates a new content block from a text delta.
-    pub fn text_delta<T>(delta: T) -> Self
-    where
-        T: Into<TextDeltaContentBlock>,
-    {
-        Self::TextDelta(delta.into())
-    }
-
-    /// Creates a new content block.
-    pub fn new<T>(block: T) -> Self
-    where
-        T: Into<ContentBlock>,
-    {
-        block.into()
-    }
-}
 
 /// The text content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -149,19 +147,13 @@ impl_display_for_serialize!(TextContentBlock);
 
 impl From<String> for TextContentBlock {
     fn from(text: String) -> Self {
-        Self {
-            _type: ContentType::Text,
-            text,
-        }
+        Self::new(text)
     }
 }
 
 impl From<&str> for TextContentBlock {
     fn from(text: &str) -> Self {
-        Self {
-            _type: ContentType::Text,
-            text: text.to_string(),
-        }
+        Self::new(text)
     }
 }
 
@@ -200,8 +192,8 @@ impl Default for ImageContentBlock {
 impl_display_for_serialize!(ImageContentBlock);
 
 impl From<ImageContentSource> for ImageContentBlock {
-    fn from(value: ImageContentSource) -> Self {
-        Self::new(value)
+    fn from(source: ImageContentSource) -> Self {
+        Self::new(source)
     }
 }
 
@@ -283,12 +275,12 @@ impl Default for ImageContentSource {
 impl_display_for_serialize!(ImageContentSource);
 
 impl ImageContentSource {
-    /// Creates a new image content source.
+    /// Creates a new image content source from Base64 encoded image data.
     ///
     /// ## Arguments
     /// - `media_type` - The media type of the image.
     /// - `data` - The data of the image.
-    pub fn new<S>(
+    pub fn base64<S>(
         media_type: ImageMediaType,
         data: S,
     ) -> Self
@@ -296,9 +288,9 @@ impl ImageContentSource {
         S: Into<String>,
     {
         Self {
+            _type: ImageSourceType::Base64,
             media_type,
             data: data.into(),
-            ..Default::default()
         }
     }
 }
@@ -436,7 +428,7 @@ impl From<&str> for TextDeltaContentBlock {
 }
 
 impl TextDeltaContentBlock {
-    /// Creates a new text content block.
+    /// Creates a new text delta content block.
     pub(crate) fn new<S>(text: S) -> Self
     where
         S: Into<String>,
@@ -607,6 +599,60 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<ImageMediaType>("\"image/webp\"").unwrap(),
             ImageMediaType::Webp
+        );
+    }
+
+    #[test]
+    fn from_path_image_media_type() {
+        let path = PathBuf::from("image.jpeg");
+        assert_eq!(
+            ImageMediaType::from_path(&path).unwrap(),
+            ImageMediaType::Jpeg
+        );
+
+        let path = PathBuf::from("image.png");
+        assert_eq!(
+            ImageMediaType::from_path(&path).unwrap(),
+            ImageMediaType::Png
+        );
+
+        let path = PathBuf::from("image.gif");
+        assert_eq!(
+            ImageMediaType::from_path(&path).unwrap(),
+            ImageMediaType::Gif
+        );
+
+        let path = PathBuf::from("image.webp");
+        assert_eq!(
+            ImageMediaType::from_path(&path).unwrap(),
+            ImageMediaType::Webp
+        );
+
+        let path = PathBuf::from("image.bmp");
+        assert_eq!(
+            ImageMediaType::from_path(&path),
+            Err(ImageMediaTypeParseError::NotSupported(
+                "bmp".to_string()
+            ))
+        );
+
+        let path = PathBuf::from("image");
+        assert!(ImageMediaType::from_path(&path).is_err());
+    }
+    
+    #[test]
+    fn new_image_content_source() {
+        let image_content_source = ImageContentSource::base64(
+            ImageMediaType::Jpeg,
+            "data",
+        );
+        assert_eq!(
+            image_content_source,
+            ImageContentSource {
+                _type: ImageSourceType::Base64,
+                media_type: ImageMediaType::Jpeg,
+                data: "data".to_string(),
+            }
         );
     }
 
@@ -829,6 +875,20 @@ mod tests {
     }
 
     #[test]
+    fn from_text_delta_content_block() {
+        assert_eq!(
+            TextDeltaContentBlock::from("text"),
+            TextDeltaContentBlock::new("text")
+        );
+
+        let content_block: TextDeltaContentBlock = "text".into();
+        assert_eq!(
+            content_block,
+            TextDeltaContentBlock::new("text")
+        );
+    }
+
+    #[test]
     fn new_content_block() {
         let content_block = ContentBlock::Text(TextContentBlock::new(
             "text".to_string(),
@@ -960,6 +1020,35 @@ mod tests {
     }
 
     #[test]
+    fn from_content_block() {
+        assert_eq!(
+            ContentBlock::from("text"),
+            ContentBlock::Text(TextContentBlock::new("text"))
+        );
+
+        let content_block: ContentBlock = "text".into();
+        assert_eq!(
+            content_block,
+            ContentBlock::Text(TextContentBlock::new("text"))
+        );
+
+        assert_eq!(
+            ContentBlock::from(ImageContentSource::default()),
+            ContentBlock::Image(ImageContentBlock::new(
+                ImageContentSource::default()
+            ))
+        );
+
+        let content_block: ContentBlock = ImageContentSource::default().into();
+        assert_eq!(
+            content_block,
+            ContentBlock::Image(ImageContentBlock::new(
+                ImageContentSource::default()
+            ))
+        );
+    }
+
+    #[test]
     fn new_content() {
         let content = Content::SingleText("text".to_string());
         assert_eq!(
@@ -979,10 +1068,10 @@ mod tests {
             content,
             Content::MultipleBlock(vec![
                 ContentBlock::Text(TextContentBlock::new(
-                    "text".to_string()
+                    "text".to_string(),
                 )),
                 ContentBlock::Image(ImageContentBlock::new(
-                    ImageContentSource::default()
+                    ImageContentSource::default(),
                 )),
             ])
         );
@@ -1056,6 +1145,52 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<Content>("[{\"type\":\"text\",\"text\":\"text\"},{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}]").unwrap(),
             content
+        );
+    }
+
+    #[test]
+    fn from_content() {
+        assert_eq!(
+            Content::from("text"),
+            Content::SingleText("text".to_string())
+        );
+
+        let content: Content = "text".into();
+        assert_eq!(
+            content,
+            Content::SingleText("text".to_string())
+        );
+
+        assert_eq!(
+            Content::from(vec![ContentBlock::from(
+                "text"
+            )]),
+            Content::MultipleBlock(vec![ContentBlock::Text(
+                TextContentBlock::new("text")
+            )])
+        );
+
+        let content: Content = vec!["text".into()].into();
+        assert_eq!(
+            content,
+            Content::MultipleBlock(vec![ContentBlock::Text(
+                TextContentBlock::new("text")
+            )])
+        );
+
+        assert_eq!(
+            Content::from(ImageContentSource::default()),
+            Content::MultipleBlock(vec![ContentBlock::Image(
+                ImageContentBlock::new(ImageContentSource::default())
+            )])
+        );
+
+        let content: Content = ImageContentSource::default().into();
+        assert_eq!(
+            content,
+            Content::MultipleBlock(vec![ContentBlock::Image(
+                ImageContentBlock::new(ImageContentSource::default())
+            )])
         );
     }
 }

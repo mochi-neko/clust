@@ -242,16 +242,16 @@ mod tests {
     #[test]
     fn text() {
         let response = MessagesResponseBody {
-            content: Content::new("content"),
+            content: Content::from("content"),
             ..Default::default()
         };
 
         assert_eq!(response.text().unwrap(), "content");
 
         let response = MessagesResponseBody {
-            content: Content::new(vec![
-                TextContentBlock::new("first").into(),
-                TextContentBlock::new("second").into(),
+            content: Content::from(vec![
+                ContentBlock::from("first"),
+                ContentBlock::from("second"),
             ]),
             ..Default::default()
         };
@@ -259,9 +259,10 @@ mod tests {
         assert_eq!(response.text().unwrap(), "first");
 
         let response = MessagesResponseBody {
-            content: Content::new(vec![
-                ImageContentSource::new(ImageMediaType::Png, "source").into(),
-            ]),
+            content: Content::from(ImageContentSource::base64(
+                ImageMediaType::Png,
+                "source",
+            )),
             ..Default::default()
         };
 
@@ -271,7 +272,7 @@ mod tests {
     #[test]
     fn create_message() {
         let response = MessagesResponseBody {
-            content: Content::new("content"),
+            content: Content::from("content"),
             ..Default::default()
         };
 

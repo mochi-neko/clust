@@ -68,7 +68,7 @@ where
                     // Check if the chunk is not empty.
                     if chunk
                         .iter()
-                        .any(|b| *b != b'\r' && *b != b'\n')
+                        .any(|b| *b != b'\n')
                     {
                         let chunk = String::from_utf8(chunk)
                             .map_err(StreamError::StringDecodingError)?;

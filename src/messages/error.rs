@@ -32,7 +32,7 @@ pub enum StreamError {
 }
 
 /// The error type for the text content extraction from response body of the Messages API.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, thiserror::Error)]
 pub enum TextContentExtractionError {
     /// The multiple content blocks is empty.
     #[error("The multiple content block is empty")]
@@ -43,7 +43,7 @@ pub enum TextContentExtractionError {
 }
 
 /// The error type for parsing the image media type from an extension in a path.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, thiserror::Error)]
 pub enum ImageMediaTypeParseError {
     /// The extension is not supported
     #[error("The extension is not supported: {0}")]
