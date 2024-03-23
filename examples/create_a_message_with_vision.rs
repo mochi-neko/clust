@@ -15,7 +15,6 @@ use base64::Engine;
 use clap::Parser;
 
 use clust::messages::ClaudeModel;
-use clust::messages::Content;
 use clust::messages::ContentBlock;
 use clust::messages::ImageContentSource;
 use clust::messages::ImageMediaType;

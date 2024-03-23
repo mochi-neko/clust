@@ -18,12 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add text flattening method for `Content`: `Content::flatten_into_text()`.
 - Add image source flattening method for `Content`: `Content::flatten_into_image_source()`.
 - Add assistant message creation method for `MessagesResponseBody`: `MessagesResponseBody::create_message()`.
+- Add builder pattern for `Client`: `ClientBuilder`.
 - Add an example to create a message with vision.
 - Add an example to converse with the assistant.
 
 ### Changed
 
 - Rename `StreamChunk` to `MessageChunk`.
+- Rename `Content::MultipleBlock` to `Content::MultipleBlocks`.
 - Improve initialization and conversion methods for `Content` and `Message`.
 
 ### Fixed

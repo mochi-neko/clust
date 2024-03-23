@@ -7,6 +7,81 @@ use crate::messages::{
 };
 use crate::{ApiKey, Version};
 
+/// The builder of the API client.
+///
+/// ## Example
+/// ```
+/// use clust::ClientBuilder;
+/// use clust::ApiKey;
+/// use clust::Version;
+///
+/// let client = ClientBuilder::new(ApiKey::new("api-key"))
+///     .set_version(Version::V2023_06_01)
+///     .set_client(reqwest::Client::new())
+///     .build();
+/// ```
+#[derive(Clone)]
+pub struct ClientBuilder {
+    /// The API key.
+    api_key: ApiKey,
+    /// The API version.
+    version: Option<Version>,
+    /// Internal HTTP client.
+    client: Option<reqwest::Client>,
+}
+
+impl ClientBuilder {
+    /// Create a new API client builder with the API key.
+    pub fn new(api_key: ApiKey) -> Self {
+        Self {
+            api_key,
+            version: None,
+            client: None,
+        }
+    }
+
+    /// Create a new API client builder with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
+    pub fn from_env() -> Result<Self, std::env::VarError> {
+        let api_key = ApiKey::from_env()?;
+
+        Ok(Self::new(api_key))
+    }
+
+    /// Set the API version.
+    pub fn set_version(
+        mut self,
+        version: Version,
+    ) -> Self {
+        self.version = Some(version);
+        self
+    }
+
+    /// Set the HTTP client.
+    pub fn set_client(
+        mut self,
+        client: reqwest::Client,
+    ) -> Self {
+        self.client = Some(client);
+        self
+    }
+
+    /// Build the API client.
+    pub fn build(self) -> Client {
+        let version = self
+            .version
+            .unwrap_or_default();
+        let client = self
+            .client
+            .unwrap_or_else(|| reqwest::Client::new());
+
+        Client {
+            api_key: self.api_key,
+            version,
+            client,
+        }
+    }
+}
+
 /// The API client.
 #[derive(Clone)]
 pub struct Client {
@@ -14,40 +89,11 @@ pub struct Client {
     api_key: ApiKey,
     /// The API version.
     version: Version,
-    /// An HTTP client.
+    /// Internal HTTP client.
     client: reqwest::Client,
 }
 
 impl Client {
-    /// Create a new API client.
-    ///
-    /// ## Arguments
-    /// - `api_key` - The API key.
-    /// - `version` - The API version.
-    /// - `client` - A HTTP client.
-    ///
-    /// ## Example
-    /// ```
-    /// use clust::Client;
-    ///
-    /// let api_key = clust::ApiKey::new("api-key");
-    /// let version = clust::Version::V2023_06_01;
-    /// let client = reqwest::Client::new();
-    ///
-    /// let client = Client::new(api_key, version, client);
-    /// ```
-    pub fn new(
-        api_key: ApiKey,
-        version: Version,
-        client: reqwest::Client,
-    ) -> Self {
-        Self {
-            api_key,
-            version,
-            client,
-        }
-    }
-
     /// Create a new API client with the API key loaded from the environment variable: `ANTHROPIC_API_KEY` and default options.
     ///
     /// ## Example
@@ -61,7 +107,11 @@ impl Client {
         let version = Version::default();
         let client = reqwest::Client::new();
 
-        Ok(Self::new(api_key, version, client))
+        Ok(Self {
+            api_key,
+            version,
+            client,
+        })
     }
 
     /// Create a new API client with the API key and default options.
@@ -81,7 +131,11 @@ impl Client {
         let version = Version::default();
         let client = reqwest::Client::new();
 
-        Self::new(api_key, version, client)
+        Self {
+            api_key,
+            version,
+            client,
+        }
     }
 
     /// Create a request builder for the `POST` method.
@@ -201,5 +255,34 @@ impl Client {
         request_body: MessagesRequestBody,
     ) -> MessagesResult<impl Stream<Item = ChunkStreamResult>> {
         crate::messages::api::create_a_message_stream(self, request_body).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builder() {
+        let client = ClientBuilder::new(ApiKey::new("api-key")).build();
+        assert_eq!(client.api_key.value(), "api-key");
+        assert_eq!(client.version, Version::default());
+
+        let client = ClientBuilder::new(ApiKey::new("api-key"))
+            .set_version(Version::V2023_01_01)
+            .build();
+        assert_eq!(client.api_key.value(), "api-key");
+        assert_eq!(client.version, Version::V2023_01_01);
+
+        let client = ClientBuilder::new(ApiKey::new("api-key"))
+            .set_client(
+                reqwest::ClientBuilder::new()
+                    .timeout(std::time::Duration::from_secs(10))
+                    .build()
+                    .unwrap(),
+            )
+            .build();
+        assert_eq!(client.api_key.value(), "api-key");
+        assert_eq!(client.version, Version::default());
     }
 }

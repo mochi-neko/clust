@@ -16,11 +16,11 @@ use std::path::PathBuf;
 ///
 /// // Manual
 /// let content = Content::SingleText("text".to_string());
-/// let content = Content::MultipleBlock(vec![ContentBlock::Text(TextContentBlock::new("text"))]);
-/// let content = Content::MultipleBlock(vec![
+/// let content = Content::MultipleBlocks(vec![ContentBlock::Text(TextContentBlock::new("text"))]);
+/// let content = Content::MultipleBlocks(vec![
 ///     ContentBlock::Image(ImageContentBlock::new(ImageContentSource::base64(ImageMediaType::Png, "base64")))
 /// ]);
-/// let content = Content::MultipleBlock(vec![
+/// let content = Content::MultipleBlocks(vec![
 ///     ContentBlock::Text(TextContentBlock::new("text")),
 ///     ContentBlock::Image(ImageContentBlock::new(ImageContentSource::base64(ImageMediaType::Png, "base64"))),
 /// ]);
@@ -48,7 +48,7 @@ pub enum Content {
     /// The single text content.
     SingleText(String),
     /// The multiple content blocks.
-    MultipleBlock(Vec<ContentBlock>),
+    MultipleBlocks(Vec<ContentBlock>),
 }
 
 impl Default for Content {
@@ -65,7 +65,7 @@ impl From<&str> for Content {
 
 impl From<ImageContentSource> for Content {
     fn from(image: ImageContentSource) -> Self {
-        Self::MultipleBlock(vec![ContentBlock::Image(
+        Self::MultipleBlocks(vec![ContentBlock::Image(
             image.into(),
         )])
     }
@@ -74,7 +74,7 @@ impl From<ImageContentSource> for Content {
 impl_enum_with_string_or_array_serialization!(
     Content,
     SingleText(String),
-    MultipleBlock(ContentBlock)
+    MultipleBlocks(ContentBlock)
 );
 
 impl_display_for_serialize!(Content);
@@ -88,7 +88,7 @@ impl Content {
     pub fn flatten_into_text(&self) -> Result<&str, ContentFlatteningError> {
         match self {
             | Content::SingleText(text) => Ok(text),
-            | Content::MultipleBlock(block) => match block.first() {
+            | Content::MultipleBlocks(block) => match block.first() {
                 | Some(first) => match first {
                     | ContentBlock::Text(text) => Ok(&text.text),
                     | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
@@ -110,7 +110,7 @@ impl Content {
             | Content::SingleText(_) => {
                 Err(ContentFlatteningError::NotFoundTargetBlock)
             },
-            | Content::MultipleBlock(block) => match block.first() {
+            | Content::MultipleBlocks(block) => match block.first() {
                 | Some(first) => match first {
                     | ContentBlock::Image(image) => Ok(&image.source),
                     | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
@@ -938,7 +938,7 @@ mod tests {
             Content::SingleText("text".to_string())
         );
 
-        let content = Content::MultipleBlock(vec![
+        let content = Content::MultipleBlocks(vec![
             ContentBlock::Text(TextContentBlock::new(
                 "text".to_string(),
             )),
@@ -948,7 +948,7 @@ mod tests {
         ]);
         assert_eq!(
             content,
-            Content::MultipleBlock(vec![
+            Content::MultipleBlocks(vec![
                 ContentBlock::Text(TextContentBlock::new(
                     "text".to_string(),
                 )),
@@ -972,7 +972,7 @@ mod tests {
         let content = Content::SingleText("text".to_string());
         assert_eq!(content.to_string(), "\"text\"");
 
-        let content = Content::MultipleBlock(vec![
+        let content = Content::MultipleBlocks(vec![
             ContentBlock::Text(TextContentBlock::new(
                 "text".to_string(),
             )),
@@ -994,7 +994,7 @@ mod tests {
             "\"text\""
         );
 
-        let content = Content::MultipleBlock(vec![
+        let content = Content::MultipleBlocks(vec![
             ContentBlock::Text(TextContentBlock::new(
                 "text".to_string(),
             )),
@@ -1016,7 +1016,7 @@ mod tests {
             content
         );
 
-        let content = Content::MultipleBlock(vec![
+        let content = Content::MultipleBlocks(vec![
             ContentBlock::Text(TextContentBlock::new(
                 "text".to_string(),
             )),
@@ -1047,7 +1047,7 @@ mod tests {
             Content::from(vec![ContentBlock::from(
                 "text"
             )]),
-            Content::MultipleBlock(vec![ContentBlock::Text(
+            Content::MultipleBlocks(vec![ContentBlock::Text(
                 TextContentBlock::new("text")
             )])
         );
@@ -1055,14 +1055,14 @@ mod tests {
         let content: Content = vec!["text".into()].into();
         assert_eq!(
             content,
-            Content::MultipleBlock(vec![ContentBlock::Text(
+            Content::MultipleBlocks(vec![ContentBlock::Text(
                 TextContentBlock::new("text")
             )])
         );
 
         assert_eq!(
             Content::from(ImageContentSource::default()),
-            Content::MultipleBlock(vec![ContentBlock::Image(
+            Content::MultipleBlocks(vec![ContentBlock::Image(
                 ImageContentBlock::new(ImageContentSource::default())
             )])
         );
@@ -1070,7 +1070,7 @@ mod tests {
         let content: Content = ImageContentSource::default().into();
         assert_eq!(
             content,
-            Content::MultipleBlock(vec![ContentBlock::Image(
+            Content::MultipleBlocks(vec![ContentBlock::Image(
                 ImageContentBlock::new(ImageContentSource::default())
             )])
         );
