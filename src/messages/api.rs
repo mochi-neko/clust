@@ -1,17 +1,18 @@
 use crate::messages::chunk_stream::ChunkStream;
 use crate::messages::{
-    ChunkStreamResult, MessagesError, MessagesRequestBody,
-    MessagesResponseBody, MessagesResult, StreamOption,
+    MessageChunk, MessagesError, MessagesRequestBody, MessagesResponseBody,
+    StreamError, StreamOption,
 };
 use crate::ApiError;
 use crate::Client;
 use crate::ClientError;
+
 use futures_core::Stream;
 
 pub(crate) async fn create_a_message(
     client: &Client,
     request_body: MessagesRequestBody,
-) -> MessagesResult<MessagesResponseBody> {
+) -> Result<MessagesResponseBody, MessagesError> {
     // Validate stream option.
     if let Some(stream) = &request_body.stream {
         if *stream != StreamOption::ReturnOnce {
@@ -67,7 +68,8 @@ pub(crate) async fn create_a_message(
 pub(crate) async fn create_a_message_stream(
     client: &Client,
     request_body: MessagesRequestBody,
-) -> MessagesResult<impl Stream<Item = ChunkStreamResult>> {
+) -> Result<impl Stream<Item = Result<MessageChunk, StreamError>>, MessagesError>
+{
     // Validate stream option.
     if let None = &request_body.stream {
         return Err(MessagesError::StreamOptionMismatch);

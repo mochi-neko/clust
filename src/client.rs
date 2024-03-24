@@ -1,10 +1,7 @@
 use futures_core::Stream;
 use reqwest::RequestBuilder;
 
-use crate::messages::{
-    ChunkStreamResult, MessagesRequestBody, MessagesResponseBody,
-    MessagesResult,
-};
+use crate::messages::{MessageChunk, MessagesError, MessagesRequestBody, MessagesResponseBody, StreamError};
 use crate::{ApiKey, Version};
 
 /// The builder of the API client.
@@ -197,7 +194,7 @@ impl Client {
     pub async fn create_a_message(
         &self,
         request_body: MessagesRequestBody,
-    ) -> MessagesResult<MessagesResponseBody> {
+    ) -> Result<MessagesResponseBody, MessagesError> {
         crate::messages::api::create_a_message(self, request_body).await
     }
 
@@ -253,7 +250,7 @@ impl Client {
     pub async fn create_a_message_stream(
         &self,
         request_body: MessagesRequestBody,
-    ) -> MessagesResult<impl Stream<Item = ChunkStreamResult>> {
+    ) -> Result<impl Stream<Item = Result<MessageChunk, StreamError>>, MessagesError> {
         crate::messages::api::create_a_message_stream(self, request_body).await
     }
 }

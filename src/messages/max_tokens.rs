@@ -1,5 +1,5 @@
 use crate::messages::ClaudeModel;
-use crate::{ValidationError, ValidationResult};
+use crate::ValidationError;
 use std::fmt::Display;
 
 /// The maximum number of tokens.
@@ -53,7 +53,7 @@ impl MaxTokens {
     pub fn new(
         value: u32,
         model: ClaudeModel,
-    ) -> ValidationResult<MaxTokens, u32> {
+    ) -> Result<MaxTokens, ValidationError<u32>> {
         if value > model.max_tokens() {
             return Err(ValidationError {
                 _type: "MaxTokens".to_string(),

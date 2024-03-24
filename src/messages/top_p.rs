@@ -1,4 +1,4 @@
-use crate::{ValidationError, ValidationResult};
+use crate::ValidationError;
 use std::fmt::Display;
 
 /// Use nucleus sampling.
@@ -45,7 +45,7 @@ impl TopP {
     ///
     /// ## Errors
     /// It returns a validation error if the value is not in range: `[0.0, 1.0]`.
-    pub fn new(value: f32) -> ValidationResult<Self, f32> {
+    pub fn new(value: f32) -> Result<Self, ValidationError<f32>> {
         if value < 0.0 || value > 1.0 {
             return Err(ValidationError {
                 _type: "TopP".to_string(),

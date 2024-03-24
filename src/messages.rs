@@ -10,7 +10,6 @@ mod message_chunk;
 mod messages_request_body;
 mod messages_response_body;
 mod metadata;
-mod result;
 mod role;
 mod stop_reason;
 mod stop_sequence;
@@ -22,6 +21,7 @@ mod top_p;
 mod usage;
 
 pub(crate) mod api;
+mod function;
 
 pub use claude_model::ClaudeModel;
 pub use content::Content;
@@ -56,8 +56,6 @@ pub use messages_response_body::MessageObjectType;
 pub use messages_response_body::MessagesResponseBody;
 pub use metadata::Metadata;
 pub use metadata::UserId;
-pub use result::ChunkStreamResult;
-pub use result::MessagesResult;
 pub use role::Role;
 pub use stop_reason::StopReason;
 pub use stop_sequence::StopSequence;

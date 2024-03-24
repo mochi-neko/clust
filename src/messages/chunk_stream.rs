@@ -5,16 +5,13 @@ use bytes::{Buf, BytesMut};
 use futures_core::Stream;
 use pin_project::pin_project;
 
-use crate::messages::{ChunkStreamResult, MessageChunk, StreamError};
-
-/// The stream item of the reqwest response.
-type ReqwestStreamItem = Result<bytes::Bytes, reqwest::Error>;
+use crate::messages::{MessageChunk, StreamError};
 
 /// The stream of message chunks with `tokio` backend.
 #[pin_project]
 pub(crate) struct ChunkStream<S>
 where
-    S: Stream<Item = ReqwestStreamItem> + Unpin,
+    S: Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin,
 {
     #[pin]
     stream: S,
@@ -23,7 +20,7 @@ where
 
 impl<S> ChunkStream<S>
 where
-    S: Stream<Item = ReqwestStreamItem> + Unpin,
+    S: Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin,
 {
     /// Create a new chunk stream.
     pub fn new(stream: S) -> Self {
@@ -36,9 +33,9 @@ where
 
 impl<S> Stream for ChunkStream<S>
 where
-    S: Stream<Item = ReqwestStreamItem> + Unpin,
+    S: Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin,
 {
-    type Item = ChunkStreamResult;
+    type Item = Result<MessageChunk, StreamError>;
 
     fn poll_next(
         self: Pin<&mut Self>,
