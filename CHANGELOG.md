@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add text flattening method for `Content`: `Content::flatten_into_text()`.
+- Add text flattening method for `Content`: `Content::flatten_into_text()`. <- (#1)
 - Add image source flattening method for `Content`: `Content::flatten_into_image_source()`.
 - Add assistant message creation method for `MessagesResponseBody`: `MessagesResponseBody::create_message()`.
 - Add builder pattern for `Client`: `ClientBuilder`.
