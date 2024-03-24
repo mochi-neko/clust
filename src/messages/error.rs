@@ -35,6 +35,7 @@ pub enum StreamError {
     ChunkDataDeserializationError(#[from] serde_json::Error),
 }
 
+/// The error type for parsing message chunk type.
 #[derive(Debug, thiserror::Error)]
 pub struct MessageChunkTypeError {
     /// The actual chunk type.
