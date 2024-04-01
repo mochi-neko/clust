@@ -60,11 +60,6 @@ struct ToolInformation {
     parameters: Vec<Parameter>,
 }
 
-pub(crate) fn impl_tool(func: &ItemFn) -> TokenStream {
-    let tool_information = get_tool_information(func);
-    impl_tool_for_function(func, tool_information).into()
-}
-
 fn get_doc_comments(func: &ItemFn) -> Vec<String> {
     func.attrs
         .iter()
@@ -300,32 +295,118 @@ fn quote_call(
     }
 }
 
+fn quote_call_with_result(
+    func: &ItemFn,
+    info: &ToolInformation,
+) -> proc_macro2::TokenStream {
+    let name = info.name.clone();
+    let ident = func.sig.ident.clone();
+    let parameters: Vec<proc_macro2::TokenStream> = info
+        .parameters
+        .iter()
+        .map(|parameter| parameter.name.clone())
+        .map(|parameter| {
+            quote! {
+                 function_calls.invoke.parameters.get(#parameter)
+                        .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#parameter.to_string()))?
+                        .parse()
+                        .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#parameter.to_string()))?
+            }
+        })
+        .collect();
+
+    quote! {
+        fn call(&self, function_calls: clust::messages::FunctionCalls)
+        -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
+            if function_calls.invoke.tool_name != #name {
+                return Err(clust::messages::ToolCallError::ToolNameMismatch);
+            }
+
+            let result = #ident(
+                #(
+                    #parameters
+                ),*
+            );
+
+            match result {
+                | Ok(value) => {
+                    Ok(clust::messages::FunctionResults::Result(
+                        clust::messages::FunctionResult {
+                            tool_name: #name.to_string(),
+                            stdout: format!("{}", value),
+                        }
+                    ))
+                },
+                | Err(error) => {
+                    Ok(clust::messages::FunctionResults::Error(
+                        format!("{}", error)
+                    ))
+                },
+            }
+        }
+    }
+}
+
 fn impl_tool_for_function(
     func: &ItemFn,
     info: ToolInformation,
 ) -> proc_macro2::TokenStream {
     let description_quote = quote_description(&info);
     let call_quote = quote_call(func, &info);
-    // let call_quote = quote! {
-    //     fn call(&self, function_calls: clust::messages::FunctionCalls)
-    //     -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
-    //         unimplemented!()
-    //     }
-    // };
-
-    let struct_name = format!("ClustTool_{}", info.name);
-    let struct_name_ident = Ident::new(&struct_name, Span::call_site());
+    let struct_name = Ident::new(
+        &format!("ClustTool_{}", info.name),
+        Span::call_site(),
+    );
 
     quote! {
+        // Original function
         #func
 
-        pub struct #struct_name_ident;
+        // Generated tool struct
+        pub struct #struct_name;
 
-        impl clust::messages::Tool for #struct_name_ident {
+        // Implement Tool trait for generated tool struct
+        impl clust::messages::Tool for #struct_name {
             #description_quote
             #call_quote
         }
     }
+}
+
+fn impl_tool_for_function_with_result(
+    func: &ItemFn,
+    info: ToolInformation,
+) -> proc_macro2::TokenStream {
+    let description_quote = quote_description(&info);
+    let call_quote = quote_call_with_result(func, &info);
+    let struct_name = Ident::new(
+        &format!("ClustTool_{}", info.name),
+        Span::call_site(),
+    );
+
+    quote! {
+        // Original function
+        #func
+
+        // Generated tool struct
+        pub struct #struct_name;
+
+        // Implement Tool trait for generated tool struct
+        impl clust::messages::Tool for #struct_name {
+            #description_quote
+            #call_quote
+        }
+    }
+}
+
+pub(crate) fn impl_tool(func: &ItemFn) -> TokenStream {
+    let tool_information = get_tool_information(func);
+    impl_tool_for_function(func, tool_information).into()
+}
+
+pub(crate) fn impl_tool_with_result(func: &ItemFn) -> TokenStream {
+    let tool_information = get_tool_information(func);
+    impl_tool_for_function_with_result(func, tool_information).into()
 }
 
 #[cfg(test)]
