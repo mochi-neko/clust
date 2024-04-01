@@ -37,6 +37,7 @@ pub use error::ImageMediaTypeParseError;
 pub use error::MessageChunkTypeError;
 pub use error::MessagesError;
 pub use error::StreamError;
+pub use error::ToolCallError;
 pub use function::FunctionCalls;
 pub use function::FunctionResult;
 pub use function::FunctionResults;

@@ -337,7 +337,7 @@ mod tests {
         let deserialized: TestEnum = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, test);
     }
-    
+
     #[test]
     fn test_impl_enum_struct_serialization() {
         #[derive(Debug, Clone, PartialEq)]
@@ -389,7 +389,7 @@ mod tests {
             #[allow(dead_code)]
             fn new(
                 value: u32,
-                other_value: u32
+                other_value: u32,
             ) -> Self {
                 Self {
                     tag: "c".to_string(),

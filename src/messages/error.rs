@@ -76,3 +76,17 @@ pub enum ImageMediaTypeParseError {
     #[error("Extension is not found")]
     NotFound,
 }
+
+/// The error type for the tool call.
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub enum ToolCallError {
+    /// Tool name mismatch.
+    #[error("Tool name mismatch")]
+    ToolNameMismatch,
+    /// Tool parameter not found.
+    #[error("Tool parameter not found: {0}")]
+    ParameterNotFound(String),
+    /// Tool parameter parse failed.
+    #[error("Tool parameter parse failed: {0}")]
+    ParameterParseFailed(String),
+}

@@ -1,5 +1,30 @@
-use quick_xml::{DeError, Writer};
 use std::collections::BTreeMap;
+
+use quick_xml::{DeError, Writer};
+
+use crate::messages::ToolCallError;
+
+/// Implements [`std::fmt::Display`] for a type that can be XML serialized.
+///
+/// ## Arguments
+/// - `$t`: The type.
+/// - `$tag_name`: The tag name of the root of XML element.
+macro_rules! impl_display_for_serialize_xml {
+    ($t:ty, $tag_name:expr) => {
+        impl std::fmt::Display for $t {
+            fn fmt(
+                &self,
+                f: &mut std::fmt::Formatter<'_>,
+            ) -> std::fmt::Result {
+                let xml =
+                    serialize(self, $tag_name).map_err(|_| std::fmt::Error)?;
+                write!(f, "{}", xml)
+            }
+        }
+    };
+}
+
+pub(crate) use impl_display_for_serialize_xml;
 
 /// A tool is a function that can be called by the assistant.
 pub trait Tool {
@@ -10,7 +35,7 @@ pub trait Tool {
     fn call(
         &self,
         function_calls: FunctionCalls,
-    ) -> FunctionResults;
+    ) -> Result<FunctionResults, ToolCallError>;
 }
 
 /// ## XML example
@@ -40,6 +65,8 @@ pub struct ToolDescription {
     pub parameters: Vec<ParameterElement>,
 }
 
+impl_display_for_serialize_xml!(ToolDescription, "tool_description");
+
 /// ## XML example
 /// ```xml
 /// <parameter>
@@ -52,6 +79,8 @@ pub struct ToolDescription {
 pub struct ParameterElement {
     pub parameter: Parameter,
 }
+
+impl_display_for_serialize_xml!(ParameterElement, "parameter");
 
 /// ## XML example
 /// ```xml
@@ -66,6 +95,8 @@ pub struct Parameter {
     pub _type: String,
     pub description: String,
 }
+
+impl_display_for_serialize_xml!(Parameter, "parameter");
 
 /// ## XML example
 /// ```xml
@@ -84,6 +115,8 @@ pub struct FunctionCalls {
     pub invoke: Invoke,
 }
 
+impl_display_for_serialize_xml!(FunctionCalls, "function_calls");
+
 /// ## XML example
 /// ```xml
 /// <invoke>
@@ -99,6 +132,8 @@ pub struct Invoke {
     pub tool_name: String,
     pub parameters: BTreeMap<String, String>,
 }
+
+impl_display_for_serialize_xml!(Invoke, "invoke");
 
 /// ## XML example
 /// ```xml
@@ -129,6 +164,20 @@ pub enum FunctionResults {
     Error(String),
 }
 
+impl From<FunctionResult> for FunctionResults {
+    fn from(value: FunctionResult) -> Self {
+        Self::Result(value)
+    }
+}
+
+impl From<String> for FunctionResults {
+    fn from(value: String) -> Self {
+        Self::Error(value)
+    }
+}
+
+impl_display_for_serialize_xml!(FunctionResults, "function_results");
+
 /// ## XML example
 /// ```xml
 /// <result>
@@ -144,9 +193,9 @@ pub struct FunctionResult {
     pub stdout: String,
 }
 
-pub(crate) fn deserialize<'de, T>(
-    serialized: &'de str
-) -> std::result::Result<T, DeError>
+impl_display_for_serialize_xml!(FunctionResult, "result");
+
+pub(crate) fn deserialize<'de, T>(serialized: &'de str) -> Result<T, DeError>
 where
     T: serde::Deserialize<'de>,
 {
@@ -156,7 +205,7 @@ where
 pub(crate) fn serialize<T>(
     deserialized: T,
     tag_name: &str,
-) -> std::result::Result<String, DeError>
+) -> Result<String, DeError>
 where
     T: serde::Serialize,
 {
