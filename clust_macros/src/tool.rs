@@ -10,13 +10,7 @@ use syn::{AttrStyle, Expr, ItemFn, Meta};
 #[derive(Debug, Clone)]
 struct DocComments {
     description: String,
-    parameters: BTreeMap<String, ParameterDocument>,
-}
-
-#[derive(Debug, Clone)]
-struct ParameterDocument {
-    name: String,
-    description: String,
+    parameters: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -42,13 +36,11 @@ impl ToTokens for Parameter {
         let description = &self.description;
 
         tokens.extend(quote! {
-            clust::messages::ParameterElement {
-                parameter: clust::messages::Parameter {
-                    name: format!(r#"{}"#, #name),
-                    _type: format!(r#"{}"#, #_type),
-                    description: format!(r#"{}"#, #description),
-                },
-            }
+            clust::messages::Parameter {
+                name: format!(r#"{}"#, #name),
+                _type: format!(r#"{}"#, #_type),
+                description: format!(r#"{}"#, #description),
+            },
         });
     }
 }
@@ -161,10 +153,7 @@ fn parse_doc_comments(docs: Vec<String>) -> DocComments {
 
                 parameters.insert(
                     parameter_name.clone(),
-                    ParameterDocument {
-                        name: parameter_name,
-                        description: parameter_desc.to_string(),
-                    },
+                    parameter_desc.to_string(),
                 );
             },
             | DocBlockState::Otherwise => break,
@@ -204,22 +193,22 @@ fn get_tool_information(func: &ItemFn) -> ToolInformation {
     let parameters = doc_comments
         .parameters
         .iter()
-        .map(|(parameter_name, doc_parameter)| {
-            let parameter_type = parameter_types
-                .iter()
-                .find(|parameter_type| {
-                    parameter_type.name == parameter_name.as_str()
-                })
-                .unwrap();
+        .map(
+            |(parameter_name, parameter_description)| {
+                let parameter_type = parameter_types
+                    .iter()
+                    .find(|parameter_type| {
+                        parameter_type.name == parameter_name.as_str()
+                    })
+                    .unwrap();
 
-            Parameter {
-                name: parameter_name.clone(),
-                _type: parameter_type._type.clone(),
-                description: doc_parameter
-                    .description
-                    .clone(),
-            }
-        })
+                Parameter {
+                    name: parameter_name.clone(),
+                    _type: parameter_type._type.clone(),
+                    description: parameter_description.clone(),
+                }
+            },
+        )
         .collect();
 
     ToolInformation {
@@ -229,36 +218,53 @@ fn get_tool_information(func: &ItemFn) -> ToolInformation {
     }
 }
 
+fn quote_parameter_descriptions(
+    info: &ToolInformation
+) -> Vec<proc_macro2::TokenStream> {
+    info.parameters
+        .iter()
+        .map(|parameter| {
+            let name = parameter.name.clone();
+            let _type = parameter._type.clone();
+            let description = parameter.description.clone();
+
+            quote! {
+                clust::messages::Parameter {
+                    name: format!(r#"{}"#, #name),
+                    _type: format!(r#"{}"#, #_type),
+                    description: format!(r#"{}"#, #description),
+                }
+            }
+        })
+        .collect()
+}
+
 fn quote_description(info: &ToolInformation) -> proc_macro2::TokenStream {
     let name = info.name.clone();
     let description = info.description.clone();
-    let parameters = info
-        .parameters
-        .clone()
-        .into_iter();
+    let parameters = quote_parameter_descriptions(info);
 
     quote! {
         fn description(&self) -> clust::messages::ToolDescription {
             clust::messages::ToolDescription {
                 tool_name: format!(r#"{}"#, #name),
                 description: format!(r#"{}"#, #description),
-                parameters: vec![
-                    #(
-                        #parameters,
-                    ),*
-                ],
+                parameters: clust::messages::Parameters {
+                    inner: vec![
+                        #(
+                            #parameters
+                        ),*
+                    ],
+                },
             }
         }
     }
 }
 
-fn quote_call(
-    func: &ItemFn,
-    info: &ToolInformation,
-) -> proc_macro2::TokenStream {
-    let name = info.name.clone();
-    let ident = func.sig.ident.clone();
-    let parameters: Vec<proc_macro2::TokenStream> = info
+fn quote_invoke_parameters(
+    info: &ToolInformation
+) -> Vec<proc_macro2::TokenStream> {
+    info
         .parameters
         .iter()
         .map(|parameter| parameter.name.clone())
@@ -270,7 +276,16 @@ fn quote_call(
                         .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#parameter.to_string()))?
             }
         })
-        .collect();
+        .collect()
+}
+
+fn quote_call(
+    func: &ItemFn,
+    info: &ToolInformation,
+) -> proc_macro2::TokenStream {
+    let name = info.name.clone();
+    let ident = func.sig.ident.clone();
+    let parameters = quote_invoke_parameters(info);
 
     quote! {
         fn call(&self, function_calls: clust::messages::FunctionCalls)
@@ -301,19 +316,7 @@ fn quote_call_with_result(
 ) -> proc_macro2::TokenStream {
     let name = info.name.clone();
     let ident = func.sig.ident.clone();
-    let parameters: Vec<proc_macro2::TokenStream> = info
-        .parameters
-        .iter()
-        .map(|parameter| parameter.name.clone())
-        .map(|parameter| {
-            quote! {
-                 function_calls.invoke.parameters.get(#parameter)
-                        .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#parameter.to_string()))?
-                        .parse()
-                        .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#parameter.to_string()))?
-            }
-        })
-        .collect();
+    let parameters = quote_invoke_parameters(info);
 
     quote! {
         fn call(&self, function_calls: clust::messages::FunctionCalls)
@@ -442,6 +445,39 @@ mod test {
     }
 
     #[test]
+    fn test_get_doc_comments_with_multi_args() {
+        let input = quote! {
+            /// A function for testing.
+            ///
+            /// ## Arguments
+            /// - `arg1` - First argument.
+            /// - `arg2` - Second argument.
+            fn test_function(arg1: i32, arg2: u32) -> i32 {
+                arg1
+            }
+        };
+
+        let item_func = syn::parse_str::<ItemFn>(&input.to_string()).unwrap();
+        let doc_comments = get_doc_comments(&item_func);
+
+        assert_eq!(doc_comments.len(), 5);
+        assert_eq!(
+            doc_comments[0],
+            "A function for testing."
+        );
+        assert_eq!(doc_comments[1], "");
+        assert_eq!(doc_comments[2], "## Arguments");
+        assert_eq!(
+            doc_comments[3],
+            "- `arg1` - First argument."
+        );
+        assert_eq!(
+            doc_comments[4],
+            "- `arg2` - Second argument."
+        );
+    }
+
+    #[test]
     fn test_parse_doc_comments() {
         let input = quote! {
             /// A function for testing.
@@ -466,17 +502,46 @@ mod test {
             doc_comments
                 .parameters
                 .get("arg1")
-                .unwrap()
-                .name,
-            "arg1"
+                .unwrap(),
+            "First argument."
         );
+    }
+
+    #[test]
+    fn test_parse_doc_comments_with_multi_args() {
+        let input = quote! {
+            /// A function for testing.
+            ///
+            /// ## Arguments
+            /// - `arg1` - First argument.
+            /// - `arg2` - Second argument.
+            fn test_function(arg1: i32, arg2: u32) -> i32 {
+                arg1
+            }
+        };
+
+        let item_func = syn::parse_str::<ItemFn>(&input.to_string()).unwrap();
+        let doc_comments = get_doc_comments(&item_func);
+        let doc_comments = parse_doc_comments(doc_comments);
+
+        assert_eq!(
+            doc_comments.description,
+            "A function for testing."
+        );
+        assert_eq!(doc_comments.parameters.len(), 2);
         assert_eq!(
             doc_comments
                 .parameters
                 .get("arg1")
-                .unwrap()
-                .description,
+                .unwrap(),
             "First argument."
+        );
+        assert_eq!(
+            doc_comments
+                .parameters
+                .get("arg2")
+                .unwrap(),
+            "Second argument."
         );
     }
 
@@ -529,6 +594,83 @@ mod test {
                 .unwrap()
                 .description,
             "First argument."
+        );
+    }
+
+    #[test]
+    fn test_get_tool_information_with_multi_args() {
+        let input = quote! {
+            /// A function for testing.
+            ///
+            /// ## Arguments
+            /// - `arg1` - First argument.
+            /// - `arg2` - Second argument.
+            fn test_function(arg1: i32, arg2: u32) -> i32 {
+                arg1
+            }
+        };
+
+        let item_func = syn::parse_str::<ItemFn>(&input.to_string()).unwrap();
+        let tool_information = get_tool_information(&item_func);
+
+        assert_eq!(tool_information.name, "test_function");
+        assert_eq!(
+            tool_information.description,
+            "A function for testing."
+        );
+        assert_eq!(
+            tool_information
+                .parameters
+                .len(),
+            2
+        );
+        assert_eq!(
+            tool_information
+                .parameters
+                .get(0)
+                .unwrap()
+                .name,
+            "arg1"
+        );
+        assert_eq!(
+            tool_information
+                .parameters
+                .get(0)
+                .unwrap()
+                ._type,
+            "i32"
+        );
+        assert_eq!(
+            tool_information
+                .parameters
+                .get(0)
+                .unwrap()
+                .description,
+            "First argument."
+        );
+        assert_eq!(
+            tool_information
+                .parameters
+                .get(1)
+                .unwrap()
+                .name,
+            "arg2"
+        );
+        assert_eq!(
+            tool_information
+                .parameters
+                .get(1)
+                .unwrap()
+                ._type,
+            "u32"
+        );
+        assert_eq!(
+            tool_information
+                .parameters
+                .get(1)
+                .unwrap()
+                .description,
+            "Second argument."
         );
     }
 }

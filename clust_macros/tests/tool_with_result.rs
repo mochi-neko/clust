@@ -1,9 +1,11 @@
-use clust::messages::{
-    FunctionCalls, FunctionResult, FunctionResults, Invoke, Tool,
-};
-use clust_macros::{clust_tool, clust_tool_result};
 use std::collections::BTreeMap;
 use std::fmt::Display;
+
+use clust::messages::{
+    FunctionCalls, FunctionResults, Invoke, Tool,
+};
+
+use clust_macros::clust_tool_result;
 
 /// A function with returning result for testing.
 ///

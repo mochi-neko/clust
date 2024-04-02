@@ -43,7 +43,7 @@ pub use function::FunctionResult;
 pub use function::FunctionResults;
 pub use function::Invoke;
 pub use function::Parameter;
-pub use function::ParameterElement;
+pub use function::Parameters;
 pub use function::Tool;
 pub use function::ToolDescription;
 pub use max_tokens::MaxTokens;

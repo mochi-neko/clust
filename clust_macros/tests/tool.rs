@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use clust::messages::{
-    FunctionCalls, FunctionResult, FunctionResults, Invoke, Tool,
+    FunctionCalls, FunctionResults, Invoke, Tool,
 };
 
 use clust_macros::clust_tool;

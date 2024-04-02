@@ -62,10 +62,26 @@ pub trait Tool {
 pub struct ToolDescription {
     pub tool_name: String,
     pub description: String,
-    pub parameters: Vec<ParameterElement>,
+    pub parameters: Parameters,
 }
 
 impl_display_for_serialize_xml!(ToolDescription, "tool_description");
+
+/// ## XML example
+/// ```xml
+/// <parameters>
+///   <parameter>
+///     <name>location</name>
+///     <type>string</type>
+///     <description>The city and state, e.g. San Francisco, CA</description>
+///   </parameter>
+/// </parameters>
+/// ```
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Parameters {
+    #[serde(rename = "parameter")]
+    pub inner: Vec<Parameter>,
+}
 
 /// ## XML example
 /// ```xml
@@ -74,19 +90,6 @@ impl_display_for_serialize_xml!(ToolDescription, "tool_description");
 ///   <type>string</type>
 ///   <description>The city and state, e.g. San Francisco, CA</description>
 /// </parameter>
-/// ```
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct ParameterElement {
-    pub parameter: Parameter,
-}
-
-impl_display_for_serialize_xml!(ParameterElement, "parameter");
-
-/// ## XML example
-/// ```xml
-/// <name>location</name>
-/// <type>string</type>
-/// <description>The city and state, e.g. San Francisco, CA</description>
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Parameter {
@@ -227,6 +230,35 @@ mod tests {
     #[test]
     fn test_vector() {
         let xml = r#"
+<vector>
+  <value>1</value>
+  <value>2</value>
+  <value>3</value>
+</vector>"#;
+
+        #[derive(
+            Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize,
+        )]
+        struct Vector {
+            #[serde(rename = "value")]
+            values: Vec<i32>,
+        }
+
+        let deserialized: Vector = deserialize(xml).unwrap();
+
+        assert_eq!(deserialized.values.len(), 3);
+        assert_eq!(deserialized.values[0], 1);
+        assert_eq!(deserialized.values[1], 2);
+        assert_eq!(deserialized.values[2], 3);
+
+        let serialized = serialize(&deserialized, "vector").unwrap();
+
+        assert_eq!(serialized, xml);
+    }
+
+    #[test]
+    fn test_parameters() {
+        let xml = r#"
 <parameters>
   <parameter>
     <name>location</name>
@@ -235,24 +267,56 @@ mod tests {
   </parameter>
 </parameters>"#;
 
-        let deserialized: Vec<ParameterElement> = deserialize(xml).unwrap();
+        let deserialized: Parameters = deserialize(xml).unwrap();
 
-        assert_eq!(deserialized.len(), 1);
+        assert_eq!(deserialized.inner.len(), 1);
+        let parameter_0 = deserialized.inner[0].clone();
+        assert_eq!(parameter_0.name, "location");
+        assert_eq!(parameter_0._type, "string");
         assert_eq!(
-            deserialized[0].parameter.name,
-            "location"
-        );
-        assert_eq!(
-            deserialized[0]
-                .parameter
-                ._type,
-            "string"
-        );
-        assert_eq!(
-            deserialized[0]
-                .parameter
-                .description,
+            parameter_0.description,
             "The city and state, e.g. San Francisco, CA"
+        );
+
+        let serialized = serialize(&deserialized, "parameters").unwrap();
+
+        assert_eq!(serialized, xml);
+    }
+
+    #[test]
+    fn test_multi_parameters() {
+        let xml = r#"
+<parameters>
+  <parameter>
+    <name>location</name>
+    <type>string</type>
+    <description>The city and state, e.g. San Francisco, CA</description>
+  </parameter>
+  <parameter>
+    <name>temperature</name>
+    <type>f32</type>
+    <description>The temperature at the location.</description>
+  </parameter>
+</parameters>"#;
+
+        let deserialized: Parameters = deserialize(xml).unwrap();
+
+        assert_eq!(deserialized.inner.len(), 2);
+
+        let parameter_0 = deserialized.inner[0].clone();
+        assert_eq!(parameter_0.name, "location");
+        assert_eq!(parameter_0._type, "string");
+        assert_eq!(
+            parameter_0.description,
+            "The city and state, e.g. San Francisco, CA"
+        );
+
+        let parameter_1 = deserialized.inner[1].clone();
+        assert_eq!(parameter_1.name, "temperature");
+        assert_eq!(parameter_1._type, "f32");
+        assert_eq!(
+            parameter_1.description,
+            "The temperature at the location."
         );
 
         let serialized = serialize(&deserialized, "parameters").unwrap();
@@ -288,23 +352,23 @@ mod tests {
             deserialized.description,
             "Retrieves the current weather for a specified location.\n    Returns a dictionary with two fields:\n    - temperature: float, the current temperature in Fahrenheit\n    - conditions: string, a brief description of the current weather conditions\n    Raises ValueError if the provided location cannot be found."
         );
-        assert_eq!(deserialized.parameters.len(), 1);
         assert_eq!(
-            deserialized.parameters[0]
-                .parameter
-                .name,
+            deserialized
+                .parameters
+                .inner
+                .len(),
+            1
+        );
+        assert_eq!(
+            deserialized.parameters.inner[0].name,
             "location"
         );
         assert_eq!(
-            deserialized.parameters[0]
-                .parameter
-                ._type,
+            deserialized.parameters.inner[0]._type,
             "string"
         );
         assert_eq!(
-            deserialized.parameters[0]
-                .parameter
-                .description,
+            deserialized.parameters.inner[0].description,
             "The city and state, e.g. San Francisco, CA"
         );
 
