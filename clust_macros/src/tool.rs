@@ -107,6 +107,8 @@ impl DocBlockState {
             | Self::Description => {
                 if doc.starts_with("# Arguments")
                     || doc.starts_with("## Arguments")
+                    || doc.starts_with("# Parameters")
+                    || doc.starts_with("## Parameters")
                 {
                     Self::ParametersHeader
                 } else {
