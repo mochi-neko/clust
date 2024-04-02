@@ -38,6 +38,19 @@ pub trait Tool {
     ) -> Result<FunctionResults, ToolCallError>;
 }
 
+/// A tool is an asynchronous function that can be called by the assistant.
+pub trait AsyncTool {
+    /// Returns the description of the tool.
+    fn description(&self) -> ToolDescription;
+
+    /// Calls the tool with the provided function calls.
+    fn call(
+        &self,
+        function_calls: FunctionCalls,
+    ) -> impl std::future::Future<Output = Result<FunctionResults, ToolCallError>>
+           + Send;
+}
+
 /// ## XML example
 /// ```xml
 /// <tool_description>

@@ -4,6 +4,7 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use std::collections::BTreeMap;
 
+use crate::check_result::{get_return_type, ReturnType};
 use quote::{quote, ToTokens};
 use syn::{AttrStyle, Expr, ItemFn, Meta};
 
@@ -364,38 +365,80 @@ fn quote_call_with_result(
     }
 }
 
-fn impl_tool_for_function(
+fn quote_call_async(
     func: &ItemFn,
-    info: ToolInformation,
+    info: &ToolInformation,
 ) -> proc_macro2::TokenStream {
-    let description_quote = quote_description(&info);
-    let call_quote = quote_call(func, &info);
-    let struct_name = Ident::new(
-        &format!("ClustTool_{}", info.name),
-        Span::call_site(),
-    );
+    let name = info.name.clone();
+    let ident = func.sig.ident.clone();
+    let parameters = quote_invoke_parameters(info);
+    let quote_result = quote_result(name.clone());
 
     quote! {
-        // Original function
-        #func
+        async fn call(&self, function_calls: clust::messages::FunctionCalls)
+        -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
+            if function_calls.invoke.tool_name != #name {
+                return Err(clust::messages::ToolCallError::ToolNameMismatch);
+            }
 
-        // Generated tool struct
-        pub struct #struct_name;
+            let result = #ident(
+                #(
+                    #parameters
+                ),*
+            ).await;
 
-        // Implement Tool trait for generated tool struct
-        impl clust::messages::Tool for #struct_name {
-            #description_quote
-            #call_quote
+            #quote_result
         }
     }
 }
 
-fn impl_tool_for_function_with_result(
+fn quote_call_async_with_result(
+    func: &ItemFn,
+    info: &ToolInformation,
+) -> proc_macro2::TokenStream {
+    let name = info.name.clone();
+    let ident = func.sig.ident.clone();
+    let parameters = quote_invoke_parameters(info);
+    let quote_result = quote_result_with_match(name.clone());
+
+    quote! {
+        async fn call(&self, function_calls: clust::messages::FunctionCalls)
+        -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
+            if function_calls.invoke.tool_name != #name {
+                return Err(clust::messages::ToolCallError::ToolNameMismatch);
+            }
+
+            let result = #ident(
+                #(
+                    #parameters
+                ),*
+            ).await;
+
+            #quote_result
+        }
+    }
+}
+
+fn impl_tool_for_function(
     func: &ItemFn,
     info: ToolInformation,
 ) -> proc_macro2::TokenStream {
-    let description_quote = quote_description(&info);
-    let call_quote = quote_call_with_result(func, &info);
+    let impl_description = quote_description(&info);
+
+    let impl_call = match func.sig.output.clone() {
+        | syn::ReturnType::Default => {
+            panic!("Function must have a displayable return type")
+        },
+        | syn::ReturnType::Type(_, _type) => {
+            let return_type = get_return_type(&_type);
+
+            match return_type {
+                | ReturnType::Value => quote_call(func, &info),
+                | ReturnType::Result => quote_call_with_result(func, &info),
+            }
+        },
+    };
+
     let struct_name = Ident::new(
         &format!("ClustTool_{}", info.name),
         Span::call_site(),
@@ -410,20 +453,62 @@ fn impl_tool_for_function_with_result(
 
         // Implement Tool trait for generated tool struct
         impl clust::messages::Tool for #struct_name {
-            #description_quote
-            #call_quote
+            #impl_description
+            #impl_call
+        }
+    }
+}
+
+fn impl_tool_for_async_function(
+    func: &ItemFn,
+    info: ToolInformation,
+) -> proc_macro2::TokenStream {
+    let impl_description = quote_description(&info);
+
+    let impl_call = match func.sig.output.clone() {
+        | syn::ReturnType::Default => {
+            panic!("Function must have a displayable return type")
+        },
+        | syn::ReturnType::Type(_, _type) => {
+            let return_type = get_return_type(&_type);
+
+            match return_type {
+                | ReturnType::Value => quote_call_async(func, &info),
+                | ReturnType::Result => {
+                    quote_call_async_with_result(func, &info)
+                },
+            }
+        },
+    };
+
+    let struct_name = Ident::new(
+        &format!("ClustTool_{}", info.name),
+        Span::call_site(),
+    );
+
+    quote! {
+        // Original function
+        #func
+
+        // Generated tool struct
+        pub struct #struct_name;
+
+        // Implement Tool trait for generated tool struct
+        impl clust::messages::AsyncTool for #struct_name {
+            #impl_description
+            #impl_call
         }
     }
 }
 
 pub(crate) fn impl_tool(func: &ItemFn) -> TokenStream {
     let tool_information = get_tool_information(func);
-    impl_tool_for_function(func, tool_information).into()
-}
 
-pub(crate) fn impl_tool_with_result(func: &ItemFn) -> TokenStream {
-    let tool_information = get_tool_information(func);
-    impl_tool_for_function_with_result(func, tool_information).into()
+    if func.sig.asyncness.is_some() {
+        impl_tool_for_async_function(func, tool_information).into()
+    } else {
+        impl_tool_for_function(func, tool_information).into()
+    }
 }
 
 #[cfg(test)]
