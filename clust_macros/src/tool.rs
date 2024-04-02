@@ -279,6 +279,37 @@ fn quote_invoke_parameters(
         .collect()
 }
 
+fn quote_result(name: String) -> proc_macro2::TokenStream {
+    quote! {
+        Ok(clust::messages::FunctionResults::Result(
+            clust::messages::FunctionResult {
+                tool_name: #name.to_string(),
+                stdout: format!("{}", result),
+            }
+        ))
+    }
+}
+
+fn quote_result_with_match(name: String) -> proc_macro2::TokenStream {
+    quote! {
+        match result {
+            | Ok(value) => {
+                Ok(clust::messages::FunctionResults::Result(
+                    clust::messages::FunctionResult {
+                        tool_name: #name.to_string(),
+                        stdout: format!("{}", value),
+                    }
+                ))
+            },
+            | Err(error) => {
+                Ok(clust::messages::FunctionResults::Error(
+                    format!("{}", error)
+                ))
+            },
+        }
+    }
+}
+
 fn quote_call(
     func: &ItemFn,
     info: &ToolInformation,
@@ -286,6 +317,7 @@ fn quote_call(
     let name = info.name.clone();
     let ident = func.sig.ident.clone();
     let parameters = quote_invoke_parameters(info);
+    let quote_result = quote_result(name.clone());
 
     quote! {
         fn call(&self, function_calls: clust::messages::FunctionCalls)
@@ -300,12 +332,7 @@ fn quote_call(
                 ),*
             );
 
-            Ok(clust::messages::FunctionResults::Result(
-                clust::messages::FunctionResult {
-                    tool_name: #name.to_string(),
-                    stdout: format!("{}", result),
-                }
-            ))
+            #quote_result
         }
     }
 }
@@ -317,6 +344,7 @@ fn quote_call_with_result(
     let name = info.name.clone();
     let ident = func.sig.ident.clone();
     let parameters = quote_invoke_parameters(info);
+    let quote_result = quote_result_with_match(name.clone());
 
     quote! {
         fn call(&self, function_calls: clust::messages::FunctionCalls)
@@ -331,21 +359,7 @@ fn quote_call_with_result(
                 ),*
             );
 
-            match result {
-                | Ok(value) => {
-                    Ok(clust::messages::FunctionResults::Result(
-                        clust::messages::FunctionResult {
-                            tool_name: #name.to_string(),
-                            stdout: format!("{}", value),
-                        }
-                    ))
-                },
-                | Err(error) => {
-                    Ok(clust::messages::FunctionResults::Error(
-                        format!("{}", error)
-                    ))
-                },
-            }
+            #quote_result
         }
     }
 }
