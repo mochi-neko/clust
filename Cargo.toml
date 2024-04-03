@@ -35,7 +35,7 @@ thiserror = "1.0.*"
 pin-project = "1.1.*"
 futures-core = "0.3.*"
 quick-xml = { version = "0.31.*", features = ["serialize"] }
-clust_macros = { version = "0.7.*", optional = true }
+clust_macros = { version = "0.7.0", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0.80"
