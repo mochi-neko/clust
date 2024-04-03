@@ -1,3 +1,5 @@
+//! Provides procedural macros for the `clust` crate.
+
 use crate::tool::impl_tool;
 use proc_macro::TokenStream;
 
