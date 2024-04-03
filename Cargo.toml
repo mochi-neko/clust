@@ -15,6 +15,9 @@ keywords = ["claude", "rest", "api", "client", "machine-learning"]
 [lib]
 path = "src/lib.rs"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = []
 macros = ["dep:clust_macros"]
