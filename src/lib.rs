@@ -257,9 +257,7 @@
 //!
 //! ### Function calling
 //! 
-//! Function calling is not formally supported as following guide:
-//!
-//! https://docs.anthropic.com/claude/docs/functions-external-tools
+//! Function calling is not formally supported as [the official guide](https://docs.anthropic.com/claude/docs/functions-external-tools).
 //!
 //! This crate provides two method to use function calling:
 //!
