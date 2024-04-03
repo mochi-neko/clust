@@ -5,7 +5,12 @@ edition = "2021"
 authors = ["Mochineko <t.o.e.4315@gmail.com>"]
 rust-version = "1.76"
 license = "MIT OR Apache-2.0"
+readme = "README.md"
 description = "Procedual macros for clust."
+documentation = "https://docs.rs/clust_macros"
+repository = "https://github.com/mochi-neko/clust"
+categories = ["api-bindings", "science"]
+keywords = ["clust", "macro"]
 
 [lib]
 path = "src/lib.rs"

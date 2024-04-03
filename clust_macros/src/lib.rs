@@ -1,4 +1,4 @@
-//! Provides procedural macros for the `clust` crate.
+//! Provides procedural macros for the [clust](https://github.com/mochi-neko/clust).
 
 use crate::tool::impl_tool;
 use proc_macro::TokenStream;
