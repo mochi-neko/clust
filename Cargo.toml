@@ -15,6 +15,11 @@ keywords = ["claude", "rest", "api", "client", "machine-learning"]
 [lib]
 path = "src/lib.rs"
 
+[features]
+default = []
+macros = ["dep:clust_macros"]
+full = ["macros"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -27,6 +32,7 @@ thiserror = "1.0.*"
 pin-project = "1.1.*"
 futures-core = "0.3.*"
 quick-xml = { version = "0.31.0", features = ["serialize"] }
+clust_macros = { path = "clust_macros", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0.80"

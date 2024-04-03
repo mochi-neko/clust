@@ -1,12 +1,15 @@
+use std::fmt::Display;
+use std::path::PathBuf;
+
 use crate::macros::{
     impl_display_for_serialize, impl_enum_string_serialization,
     impl_enum_struct_serialization,
     impl_enum_with_string_or_array_serialization,
 };
-use crate::messages::{ContentFlatteningError, ImageMediaTypeParseError};
-
-use std::fmt::Display;
-use std::path::PathBuf;
+use crate::messages::{
+    ContentFlatteningError, FunctionCalls, FunctionCallsExcludingError,
+    ImageMediaTypeParseError,
+};
 
 /// The content of the message.
 ///
@@ -119,6 +122,35 @@ impl Content {
             },
         }
     }
+
+    pub fn exclude_function_calls(
+        &self
+    ) -> Result<FunctionCalls, FunctionCallsExcludingError> {
+        let content = self.flatten_into_text()?;
+
+        let xml = extract_first_function_calls(content)
+            .ok_or(FunctionCallsExcludingError::XmlNotFound)?;
+
+        let function_calls = FunctionCalls::deserialize(&xml)?;
+        Ok(function_calls)
+    }
+}
+
+fn extract_first_function_calls(text: &str) -> Option<String> {
+    let start_tag = "<function_calls>";
+    let end_tag = "</function_calls>";
+
+    let start_index = match text.find(start_tag) {
+        | Some(index) => index,
+        | None => return None,
+    };
+
+    let end_index = match text[start_index + start_tag.len()..].find(end_tag) {
+        | Some(index) => index + start_index + start_tag.len(),
+        | None => return None,
+    };
+
+    Some(text[start_index..end_index + end_tag.len()].to_string())
 }
 
 /// The content block of the message.
@@ -435,6 +467,10 @@ impl ImageMediaType {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
+    use crate::messages::Invoke;
+
     use super::*;
 
     #[test]
@@ -1162,6 +1198,76 @@ mod tests {
             .flatten_into_image_source()
             .unwrap(),
             ImageContentSource::default()
+        );
+    }
+
+    #[test]
+    fn exclude_function_calls() -> anyhow::Result<()> {
+        let content =
+            Content::from("To find the current stock price for General Motors, I will:\n\n<function_calls>\n<invoke>\n<tool_name>get_ticker_symbol</tool_name>\n<parameters>\n<company_name>General Motors</company_name>\n</parameters>\n</invoke>\n</function_calls>");
+
+        let function_calls = content.exclude_function_calls()?;
+        assert_eq!(
+            function_calls,
+            FunctionCalls {
+                invoke: Invoke {
+                    tool_name: "get_ticker_symbol".to_string(),
+                    parameters: BTreeMap::from_iter(vec![(
+                        "company_name".to_string(),
+                        "General Motors".to_string()
+                    )]),
+                }
+            },
+        );
+
+        let content =
+            Content::from("To find the current stock price for General Motors, I will:\n\n<function_calls>\n<invoke>\n<tool_name>get_ticker_symbol</tool_name>\n<parameters>\n<company_name>General Motors</company_name>\n</parameters>\n</invoke>\n</function_calls>\n\nThis returns: \"GM\"\n\nNow that I have the ticker symbol, I can get the current price:\n\n<function_calls>\n<invoke>\n<tool_name>get_current_stock_price</tool_name>\n<parameters>\n<symbol>GM</symbol>\n</parameters>\n</invoke>\n</function_calls>\n\nThe current stock price of General Motors (GM) is $34.45.");
+
+        let function_calls = content.exclude_function_calls()?;
+        assert_eq!(
+            function_calls,
+            FunctionCalls {
+                invoke: Invoke {
+                    tool_name: "get_ticker_symbol".to_string(),
+                    parameters: BTreeMap::from_iter(vec![(
+                        "company_name".to_string(),
+                        "General Motors".to_string()
+                    )]),
+                }
+            },
+        );
+
+        let content = Content::from("text");
+        assert!(content
+            .exclude_function_calls()
+            .is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_first_function_calls() {
+        let text = r#"
+To find the current stock price for General Motors, I will:
+
+<function_calls>
+<invoke>
+<tool_name>get_ticker_symbol</tool_name>
+<parameters>
+<company_name>General Motors</company_name>
+</parameters>
+</invoke>
+</function_calls>
+
+<!-- This is a commented out section, which should not be considered -->
+<!-- <function_calls>example</function_calls> -->
+
+This is another <function_calls>example</function_calls> for testing."#;
+
+        let extracted_call = extract_first_function_calls(text);
+        assert_eq!(
+            extracted_call.unwrap(),
+            "<function_calls>\n<invoke>\n<tool_name>get_ticker_symbol</tool_name>\n<parameters>\n<company_name>General Motors</company_name>\n</parameters>\n</invoke>\n</function_calls>"
         );
     }
 }

@@ -399,5 +399,9 @@ pub use error::ValidationError;
 pub use version::Version;
 
 pub use futures_core;
+pub use quick_xml;
 pub use reqwest;
 pub use serde_json;
+
+#[cfg(feature = "macros")]
+pub use clust_macros;

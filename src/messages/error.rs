@@ -89,4 +89,21 @@ pub enum ToolCallError {
     /// Tool parameter parse failed.
     #[error("Tool parameter parse failed: {0}")]
     ParameterParseFailed(String),
+    /// Tool not found.
+    #[error("Tool not found: {0}")]
+    ToolNotFound(String),
+}
+
+/// The error type for the function calls excluding.
+#[derive(Debug, thiserror::Error)]
+pub enum FunctionCallsExcludingError {
+    /// Text content flattening error.
+    #[error("Text content flattening error: {0}")]
+    TextContentFlatteningError(#[from] ContentFlatteningError),
+    /// Function calls XML block is not found in the text content.
+    #[error("Function calls XML block is not found in the text content")]
+    XmlNotFound,
+    /// XML deserialize error.
+    #[error("XML deserialize error: {0}")]
+    XmlDeserializeError(#[from] quick_xml::DeError),
 }

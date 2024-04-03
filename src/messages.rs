@@ -21,7 +21,7 @@ mod top_p;
 mod usage;
 
 pub(crate) mod api;
-mod function;
+pub(crate) mod function;
 
 pub use claude_model::ClaudeModel;
 pub use content::Content;
@@ -33,6 +33,7 @@ pub use content::ImageMediaType;
 pub use content::ImageSourceType;
 pub use content::TextContentBlock;
 pub use error::ContentFlatteningError;
+pub use error::FunctionCallsExcludingError;
 pub use error::ImageMediaTypeParseError;
 pub use error::MessageChunkTypeError;
 pub use error::MessagesError;
@@ -47,6 +48,7 @@ pub use function::Parameter;
 pub use function::Parameters;
 pub use function::Tool;
 pub use function::ToolDescription;
+pub use function::ToolList;
 pub use max_tokens::MaxTokens;
 pub use message::Message;
 pub use message_chunk::ContentBlockDeltaChunk;
