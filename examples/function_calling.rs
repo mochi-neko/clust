@@ -36,6 +36,7 @@ fn get_ticker_symbol(company_name: String) -> String {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // 0. Create a tool list and system prompt.
     let tool_list = ToolList::new(vec![
         Box::new(ClustTool_get_current_stock_price {}),
         Box::new(ClustTool_get_ticker_symbol {}),
@@ -76,15 +77,11 @@ Here are the tools available:
     )];
     let max_tokens = MaxTokens::new(4096, model)?;
     let system_prompt = SystemPrompt::new(prompt);
-    let stop_sequence = vec![StopSequence::new(
-        "</function_calls>",
-    )];
     let mut request_body = MessagesRequestBody {
         model,
         messages,
         max_tokens,
         system: Some(system_prompt),
-        //stop_sequences: Some(stop_sequence),
         ..Default::default()
     };
 

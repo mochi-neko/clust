@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2024-04-03
+
 ### Added
 
 - Support function calling.
+- Add the attribute macro `clust::clust_macros::clust_tool` to use function calling easily via `clust::messages::Tool`
+  or `clust::messages::AsyncTool`.
+
+### Changed
+
+- Remove type aliases for `std::result::Result` and explicitly specify generics.
 
 ## [0.6.0] - 2024-03-24
 

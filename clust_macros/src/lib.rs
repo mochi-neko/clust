@@ -7,6 +7,8 @@ mod tool;
 /// A procedural macro that generates a `clust::messages::Tool` or `clust::messages::AsyncTool`
 /// implementation for the annotated function with documentation.
 ///
+/// See also [the official guide](https://docs.anthropic.com/claude/docs/functions-external-tools).
+///
 /// ## Supported arguments
 /// - None
 ///   - e.g. `fn function() -> T`

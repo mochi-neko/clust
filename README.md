@@ -15,7 +15,7 @@ or add the following line to your Cargo.toml:
 
 ```toml
 [dependencies]
-clust = "0.6.0"
+clust = "0.7.0"
 ```
 
 ## Supported APIs
@@ -23,6 +23,11 @@ clust = "0.6.0"
 - Messages
     - [x] [Create a Message](https://docs.anthropic.com/claude/reference/messages_post)
     - [x] [Streaming Messages](https://docs.anthropic.com/claude/reference/messages-streaming)
+
+## Feature flags
+
+- `macros`: Enable the `clust_tool` attribute macro for generating `clust::messages::Tool`
+  or `clust::messages::AsyncTool` from a Rust function.
 
 ## Usages
 
@@ -279,6 +284,19 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
+### Function calling
+
+Function calling is not formally supported as following guide:
+
+https://docs.anthropic.com/claude/docs/functions-external-tools
+
+This crate provides two method to use function calling:
+
+1. Add the `clust::clust_macros::clust_tool` attribute macro to your Rust function and use
+   generated `clust::messages::Tool` or `clust::messages::AsyncTool` with the `macros` feature flag.
+2. Manually create `clust::messages::ToolDescription`, `clust::messages::FunctionCalls`,
+   and `clust::messages::FunctionResults`.
+
 ## Examples
 
 ### Create a message
@@ -406,9 +424,21 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-## Other examples
+### Create a message with vision
 
-See the [examples](./examples) directory for more examples.
+See [an example with vision](./examples/create_a_message_with_vision.rs).
+
+### Conversation
+
+See [a conversation example](./examples/conversation.rs).
+
+### Function calling
+
+See [a function_calling example](./examples/function_calling.rs).
+
+### Other examples
+
+See also the [examples](./examples) directory for more examples.
 
 ## Changelog
 

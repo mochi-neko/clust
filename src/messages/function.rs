@@ -103,6 +103,10 @@ impl ToolList {
     }
 }
 
+// NOTE: AsyncToolList cannot be implemented because it requires async functions (= object unsafe).
+
+/// List of tools.
+///
 /// ## XML example
 /// ```xml
 /// <tools>
@@ -132,6 +136,7 @@ impl ToolList {
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Tools {
+    /// The list of tools.
     #[serde(rename = "tool_description")]
     pub inner: Vec<ToolDescription>,
 }
@@ -146,6 +151,8 @@ impl From<Vec<ToolDescription>> for Tools {
 
 impl_xml_serialize!(Tools, "tools");
 
+/// Description of a tool.
+///
 /// ## XML example
 /// ```xml
 /// <tool_description>
@@ -168,13 +175,18 @@ impl_xml_serialize!(Tools, "tools");
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ToolDescription {
+    /// The name of the tool.
     pub tool_name: String,
+    /// The description of the tool.
     pub description: String,
+    /// The parameters of the tool.
     pub parameters: Parameters,
 }
 
 impl_xml_serialize!(ToolDescription, "tool_description");
 
+/// List of parameters of a tool.
+///
 /// ## XML example
 /// ```xml
 /// <parameters>
@@ -187,6 +199,7 @@ impl_xml_serialize!(ToolDescription, "tool_description");
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Parameters {
+    /// The list of parameters.
     #[serde(rename = "parameter")]
     pub inner: Vec<Parameter>,
 }
@@ -199,6 +212,8 @@ impl From<Vec<Parameter>> for Parameters {
     }
 }
 
+/// Parameter (or argument) of a tool.
+///
 /// ## XML example
 /// ```xml
 /// <parameter>
@@ -209,14 +224,19 @@ impl From<Vec<Parameter>> for Parameters {
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Parameter {
+    /// The name of the parameter.
     pub name: String,
+    /// The type of the parameter.
     #[serde(rename = "type")]
     pub _type: String,
+    /// The description of the parameter.
     pub description: String,
 }
 
 impl_xml_serialize!(Parameter, "parameter");
 
+/// Function calling information by the assistant.
+///
 /// ## XML example
 /// ```xml
 /// <function_calls>
@@ -231,11 +251,14 @@ impl_xml_serialize!(Parameter, "parameter");
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FunctionCalls {
+    /// The invocation of the function.
     pub invoke: Invoke,
 }
 
 impl_xml_serialize!(FunctionCalls, "function_calls");
 
+/// Invoking a tool with parameters.
+///
 /// ## XML example
 /// ```xml
 /// <invoke>
@@ -248,12 +271,16 @@ impl_xml_serialize!(FunctionCalls, "function_calls");
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Invoke {
+    /// The name of the tool to invoke.
     pub tool_name: String,
+    /// The parameters to invoke.
     pub parameters: BTreeMap<String, String>,
 }
 
 impl_xml_serialize!(Invoke, "invoke");
 
+/// Result of function calling.
+///
 /// ## XML example
 /// ```xml
 /// <function_results>
@@ -277,8 +304,10 @@ impl_xml_serialize!(Invoke, "invoke");
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum FunctionResults {
+    /// Success result.
     #[serde(rename = "result")]
     Result(FunctionResult),
+    /// Error message.
     #[serde(rename = "error")]
     Error(String),
 }
@@ -297,6 +326,8 @@ impl From<String> for FunctionResults {
 
 impl_xml_serialize!(FunctionResults, "function_results");
 
+/// Success result of function calling.
+///
 /// ## XML example
 /// ```xml
 /// <result>
@@ -308,7 +339,9 @@ impl_xml_serialize!(FunctionResults, "function_results");
 /// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FunctionResult {
+    /// The name of the called function.
     pub tool_name: String,
+    /// The standard output as the result of the function.
     pub stdout: String,
 }
 
