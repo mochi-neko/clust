@@ -9,7 +9,6 @@ use clust::messages::ClaudeModel;
 use clust::messages::MaxTokens;
 use clust::messages::Message;
 use clust::messages::MessagesRequestBody;
-use clust::messages::StopSequence;
 use clust::messages::SystemPrompt;
 use clust::messages::ToolList;
 use clust::Client;
