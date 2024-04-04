@@ -1,83 +1,11 @@
 use futures_core::Stream;
 use reqwest::RequestBuilder;
 
-use crate::messages::{MessageChunk, MessagesError, MessagesRequestBody, MessagesResponseBody, StreamError};
+use crate::messages::{
+    MessageChunk, MessagesError, MessagesRequestBody, MessagesResponseBody,
+    StreamError,
+};
 use crate::{ApiKey, Version};
-
-/// The builder of the API client.
-///
-/// ## Example
-/// ```
-/// use clust::ClientBuilder;
-/// use clust::ApiKey;
-/// use clust::Version;
-///
-/// let client = ClientBuilder::new(ApiKey::new("api-key"))
-///     .version(Version::V2023_06_01)
-///     .client(reqwest::Client::new())
-///     .build();
-/// ```
-#[derive(Clone)]
-pub struct ClientBuilder {
-    /// The API key.
-    api_key: ApiKey,
-    /// The API version.
-    version: Option<Version>,
-    /// Internal HTTP client.
-    client: Option<reqwest::Client>,
-}
-
-impl ClientBuilder {
-    /// Create a new API client builder with the API key.
-    pub fn new(api_key: ApiKey) -> Self {
-        Self {
-            api_key,
-            version: None,
-            client: None,
-        }
-    }
-
-    /// Create a new API client builder with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
-    pub fn from_env() -> Result<Self, std::env::VarError> {
-        let api_key = ApiKey::from_env()?;
-
-        Ok(Self::new(api_key))
-    }
-
-    /// Set the API version.
-    pub fn version(
-        mut self,
-        version: Version,
-    ) -> Self {
-        self.version = Some(version);
-        self
-    }
-
-    /// Set the HTTP client.
-    pub fn client(
-        mut self,
-        client: reqwest::Client,
-    ) -> Self {
-        self.client = Some(client);
-        self
-    }
-
-    /// Build the API client.
-    pub fn build(self) -> Client {
-        let version = self
-            .version
-            .unwrap_or_default();
-        let client = self
-            .client
-            .unwrap_or_else(|| reqwest::Client::new());
-
-        Client {
-            api_key: self.api_key,
-            version,
-            client,
-        }
-    }
-}
 
 /// The API client.
 #[derive(Clone)]
@@ -250,8 +178,86 @@ impl Client {
     pub async fn create_a_message_stream(
         &self,
         request_body: MessagesRequestBody,
-    ) -> Result<impl Stream<Item = Result<MessageChunk, StreamError>>, MessagesError> {
+    ) -> Result<
+        impl Stream<Item = Result<MessageChunk, StreamError>>,
+        MessagesError,
+    > {
         crate::messages::api::create_a_message_stream(self, request_body).await
+    }
+}
+
+/// The builder of `Client`.
+///
+/// ## Example
+/// ```
+/// use clust::ClientBuilder;
+/// use clust::ApiKey;
+/// use clust::Version;
+///
+/// let client = ClientBuilder::new(ApiKey::new("api-key"))
+///     .version(Version::V2023_06_01)
+///     .client(reqwest::Client::new())
+///     .build();
+/// ```
+#[derive(Clone)]
+pub struct ClientBuilder {
+    /// The API key.
+    api_key: ApiKey,
+    /// The API version.
+    version: Option<Version>,
+    /// Internal HTTP client.
+    client: Option<reqwest::Client>,
+}
+
+impl ClientBuilder {
+    /// Creates a new API client builder with the API key.
+    pub fn new(api_key: ApiKey) -> Self {
+        Self {
+            api_key,
+            version: None,
+            client: None,
+        }
+    }
+
+    /// Creates a new API client builder with the API key loaded from the environment variable: `ANTHROPIC_API_KEY`.
+    pub fn from_env() -> Result<Self, std::env::VarError> {
+        let api_key = ApiKey::from_env()?;
+
+        Ok(Self::new(api_key))
+    }
+
+    /// Sets the API version.
+    pub fn version(
+        mut self,
+        version: Version,
+    ) -> Self {
+        self.version = Some(version);
+        self
+    }
+
+    /// Sets the HTTP client.
+    pub fn client(
+        mut self,
+        client: reqwest::Client,
+    ) -> Self {
+        self.client = Some(client);
+        self
+    }
+
+    /// Builds the API client.
+    pub fn build(self) -> Client {
+        let version = self
+            .version
+            .unwrap_or_default();
+        let client = self
+            .client
+            .unwrap_or_else(|| reqwest::Client::new());
+
+        Client {
+            api_key: self.api_key,
+            version,
+            client,
+        }
     }
 }
 

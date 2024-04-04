@@ -70,6 +70,13 @@ impl MaxTokens {
             value,
         })
     }
+
+    /// Creates a new maximum number of tokens for the model.
+    pub fn from_model(model: ClaudeModel) -> Self {
+        Self {
+            value: model.max_tokens(),
+        }
+    }
 }
 
 #[cfg(test)]

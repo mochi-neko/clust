@@ -256,7 +256,7 @@
 //! ```
 //!
 //! ### Function calling
-//! 
+//!
 //! Function calling is not formally supported as [the official guide](https://docs.anthropic.com/claude/docs/functions-external-tools).
 //!
 //! This crate provides two method to use function calling:
@@ -392,19 +392,19 @@
 //! ```
 //!
 //! ### Create a message with vision
-//! 
+//!
 //! See [an example with vision](./examples/create_a_message_with_vision.rs).
-//! 
+//!
 //! ### Conversation
-//! 
+//!
 //! See [a conversation example](./examples/conversation.rs).
-//! 
+//!
 //! ### Function calling
-//! 
+//!
 //! See [a function_calling example](./examples/function_calling.rs).
-//! 
+//!
 //! ### Other examples
-//! 
+//!
 //! See also the [examples](./examples) directory for more examples.
 
 mod api_key;

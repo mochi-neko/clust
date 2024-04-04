@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2024-04-04
+
+### Added
+
+- Add builder pattern for `clust::messages::MessagesRequestBody`: `clust::messages::MessagesRequestBodyBuilder`.
+
+### Changed
+
+- Rename builder methods of `clust::ClientBuilder`.
+
 ## [0.7.0] - 2024-04-03
 
 ### Added
@@ -78,7 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add the `Create a Message` API.
 
-[unreleased]: https://github.com/mochi-neko/clust/compare/v0.7.0...HEAD
+[unreleased]: https://github.com/mochi-neko/clust/compare/v0.8.0...HEAD
+
+[0.8.0]: https://github.com/mochi-neko/clust/compare/v0.7.0...v0.8.0
 
 [0.7.0]: https://github.com/mochi-neko/clust/compare/v0.6.0...v0.7.0
 

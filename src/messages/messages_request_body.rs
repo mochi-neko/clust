@@ -74,6 +74,129 @@ pub struct MessagesRequestBody {
 
 impl_display_for_serialize!(MessagesRequestBody);
 
+/// A builder for the `MessagesRequestBody`.
+///
+/// ## Example
+/// ```
+/// use clust::messages::{MessagesRequestBuilder, ClaudeModel, Message, SystemPrompt, MaxTokens, Metadata, StopSequence, StreamOption, Temperature, TopP, TopK};
+///
+/// let request_body = MessagesRequestBuilder::new(ClaudeModel::Claude3Sonnet20240229)
+///     .messages(vec![Message::user("Hello, Claude!")])
+///     .system(SystemPrompt::new("system-prompt"))
+///     .max_tokens(MaxTokens::new(1024, ClaudeModel::Claude3Sonnet20240229).unwrap())
+///     .metadata(Metadata { user_id: "metadata".into() })
+///     .stop_sequences(vec![StopSequence::new("stop-sequence")])
+///     .stream(StreamOption::ReturnOnce)
+///     .temperature(Temperature::new(0.5).unwrap())
+///     .top_p(TopP::new(0.5).unwrap())
+///     .top_k(TopK::new(50))
+///     .build();
+/// ```
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MessagesRequestBuilder {
+    request_body: MessagesRequestBody,
+}
+
+impl MessagesRequestBuilder {
+    /// Creates a new `MessagesRequestBuilder` with the model and max tokens for the model.
+    pub fn new(model: ClaudeModel) -> Self {
+        Self {
+            request_body: MessagesRequestBody {
+                model,
+                max_tokens: MaxTokens::from_model(model),
+                ..Default::default()
+            },
+        }
+    }
+
+    /// Sets the messages.
+    pub fn messages(
+        mut self,
+        messages: Vec<Message>,
+    ) -> Self {
+        self.request_body.messages = messages;
+        self
+    }
+
+    /// Sets the system prompt.
+    pub fn system(
+        mut self,
+        system: SystemPrompt,
+    ) -> Self {
+        self.request_body.system = Some(system);
+        self
+    }
+
+    /// Sets the maximum number of tokens.
+    pub fn max_tokens(
+        mut self,
+        max_tokens: MaxTokens,
+    ) -> Self {
+        self.request_body.max_tokens = max_tokens;
+        self
+    }
+
+    /// Sets the metadata.
+    pub fn metadata(
+        mut self,
+        metadata: Metadata,
+    ) -> Self {
+        self.request_body.metadata = Some(metadata);
+        self
+    }
+
+    /// Sets the stop sequences.
+    pub fn stop_sequences(
+        mut self,
+        stop_sequences: Vec<StopSequence>,
+    ) -> Self {
+        self.request_body
+            .stop_sequences = Some(stop_sequences);
+        self
+    }
+
+    /// Sets the stream option.
+    pub fn stream(
+        mut self,
+        stream: StreamOption,
+    ) -> Self {
+        self.request_body.stream = Some(stream);
+        self
+    }
+
+    /// Sets the temperature.
+    pub fn temperature(
+        mut self,
+        temperature: Temperature,
+    ) -> Self {
+        self.request_body.temperature = Some(temperature);
+        self
+    }
+
+    /// Sets the top p.
+    pub fn top_p(
+        mut self,
+        top_p: TopP,
+    ) -> Self {
+        self.request_body.top_p = Some(top_p);
+        self
+    }
+
+    /// Sets the top k.
+    pub fn top_k(
+        mut self,
+        top_k: TopK,
+    ) -> Self {
+        self.request_body.top_k = Some(top_k);
+        self
+    }
+
+    /// Builds the MessagesRequestBody.
+    pub fn build(self) -> MessagesRequestBody {
+        self.request_body
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,6 +323,71 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<MessagesRequestBody>("{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"system\":\"system-prompt\",\"max_tokens\":16,\"metadata\":{\"user_id\":\"metadata\"},\"stop_sequences\":[\"stop-sequence\"],\"stream\":false,\"temperature\":0.5,\"top_p\":0.5,\"top_k\":50}").unwrap(),
             messages_request_body
+        );
+    }
+
+    #[test]
+    fn builder() {
+        let messages_request_body =
+            MessagesRequestBuilder::new(ClaudeModel::Claude3Sonnet20240229)
+                .messages(vec![])
+                .system(SystemPrompt::new("system-prompt"))
+                .max_tokens(
+                    MaxTokens::new(16, ClaudeModel::Claude3Sonnet20240229)
+                        .unwrap(),
+                )
+                .metadata(Metadata {
+                    user_id: "metadata".into(),
+                })
+                .stop_sequences(vec![StopSequence::new(
+                    "stop-sequence",
+                )])
+                .stream(StreamOption::ReturnOnce)
+                .temperature(Temperature::new(0.5).unwrap())
+                .top_p(TopP::new(0.5).unwrap())
+                .top_k(TopK::new(50))
+                .build();
+
+        assert_eq!(
+            messages_request_body.model,
+            ClaudeModel::Claude3Sonnet20240229
+        );
+        assert_eq!(messages_request_body.messages, vec![]);
+        assert_eq!(
+            messages_request_body.system,
+            Some(SystemPrompt::new("system-prompt"))
+        );
+        assert_eq!(
+            messages_request_body.max_tokens,
+            MaxTokens::new(16, ClaudeModel::Claude3Sonnet20240229).unwrap()
+        );
+        assert_eq!(
+            messages_request_body.metadata,
+            Some(Metadata {
+                user_id: "metadata".into(),
+            })
+        );
+        assert_eq!(
+            messages_request_body.stop_sequences,
+            Some(vec![StopSequence::new(
+                "stop-sequence"
+            )])
+        );
+        assert_eq!(
+            messages_request_body.stream,
+            Some(StreamOption::ReturnOnce)
+        );
+        assert_eq!(
+            messages_request_body.temperature,
+            Some(Temperature::new(0.5).unwrap())
+        );
+        assert_eq!(
+            messages_request_body.top_p,
+            Some(TopP::new(0.5).unwrap())
+        );
+        assert_eq!(
+            messages_request_body.top_k,
+            Some(TopK::new(50))
         );
     }
 }

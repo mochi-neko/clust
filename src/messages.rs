@@ -64,6 +64,7 @@ pub use message_chunk::PingChunk;
 pub use message_chunk::StreamStop;
 pub use message_chunk::TextDeltaContentBlock;
 pub use messages_request_body::MessagesRequestBody;
+pub use messages_request_body::MessagesRequestBuilder;
 pub use messages_response_body::MessageObjectType;
 pub use messages_response_body::MessagesResponseBody;
 pub use metadata::Metadata;
