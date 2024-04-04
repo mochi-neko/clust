@@ -180,8 +180,6 @@
 //! ### Request body
 //! The request body is defined by `clust::messages::MessagesRequestBody`.
 //!
-//! See also `MessagesRequestBody` for other options.
-//!
 //! ```rust
 //! use clust::messages::MessagesRequestBody;
 //! use clust::messages::ClaudeModel;
@@ -196,6 +194,23 @@
 //!     system: Some(SystemPrompt::new("You are an excellent AI assistant.")),
 //!     ..Default::default()
 //! };
+//! ```
+//! 
+//! You can also use the builder pattern with `clust::messages::MessagesRequestBuilder`:
+//! 
+//! ```rust
+//! use clust::messages::MessagesRequestBuilder;
+//! use clust::messages::ClaudeModel;
+//! use clust::messages::Message;
+//! use clust::messages::SystemPrompt;
+//! 
+//! let request_body = MessagesRequestBuilder::new_with_max_tokens(
+//!     ClaudeModel::Claude3Sonnet20240229,
+//!     1024,
+//! )?
+//! .messages(vec![Message::user("Hello, Claude!")])
+//! .system(SystemPrompt::new("You are an excellent AI assistant."))
+//! .build();
 //! ```
 //!
 //! ### API calling

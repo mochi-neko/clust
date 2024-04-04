@@ -3,6 +3,7 @@ use crate::messages::{
     ClaudeModel, MaxTokens, Message, Metadata, StopSequence, StreamOption,
     SystemPrompt, Temperature, TopK, TopP,
 };
+use crate::ValidationError;
 
 /// The request body for the Messages API.
 ///
@@ -91,6 +92,17 @@ impl_display_for_serialize!(MessagesRequestBody);
 ///     .top_p(TopP::new(0.5).unwrap())
 ///     .top_k(TopK::new(50))
 ///     .build();
+/// 
+/// let request_body = MessagesRequestBuilder::new_with_max_tokens(ClaudeModel::Claude3Sonnet20240229, 1024).unwrap()
+///     .messages(vec![Message::user("Hello, Claude!")])
+///     .system(SystemPrompt::new("system-prompt"))
+///     .metadata(Metadata { user_id: "metadata".into() })
+///     .stop_sequences(vec![StopSequence::new("stop-sequence")])
+///     .stream(StreamOption::ReturnOnce)
+///     .temperature(Temperature::new(0.5).unwrap())
+///     .top_p(TopP::new(0.5).unwrap())
+///     .top_k(TopK::new(50))
+///     .build();
 /// ```
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MessagesRequestBuilder {
@@ -107,6 +119,27 @@ impl MessagesRequestBuilder {
                 ..Default::default()
             },
         }
+    }
+
+    /// Creates a new `MessagesRequestBuilder` with the model and max tokens for the model.
+    /// 
+    /// ## Arguments
+    /// - `model` - The target Claude model.
+    /// - `max_tokens` - The maximum number of tokens.
+    /// 
+    /// ## Errors
+    /// It returns a validation error if the value is greater than the maximum number of tokens for the model.
+    pub fn new_with_max_tokens(
+        model: ClaudeModel,
+        max_tokens: u32,
+    ) -> Result<Self, ValidationError<u32>> {
+        Ok(Self {
+            request_body: MessagesRequestBody {
+                model,
+                max_tokens: MaxTokens::new(max_tokens, model)?,
+                ..Default::default()
+            },
+        })
     }
 
     /// Sets the messages.
@@ -347,6 +380,71 @@ mod tests {
                 .top_p(TopP::new(0.5).unwrap())
                 .top_k(TopK::new(50))
                 .build();
+
+        assert_eq!(
+            messages_request_body.model,
+            ClaudeModel::Claude3Sonnet20240229
+        );
+        assert_eq!(messages_request_body.messages, vec![]);
+        assert_eq!(
+            messages_request_body.system,
+            Some(SystemPrompt::new("system-prompt"))
+        );
+        assert_eq!(
+            messages_request_body.max_tokens,
+            MaxTokens::new(16, ClaudeModel::Claude3Sonnet20240229).unwrap()
+        );
+        assert_eq!(
+            messages_request_body.metadata,
+            Some(Metadata {
+                user_id: "metadata".into(),
+            })
+        );
+        assert_eq!(
+            messages_request_body.stop_sequences,
+            Some(vec![StopSequence::new(
+                "stop-sequence"
+            )])
+        );
+        assert_eq!(
+            messages_request_body.stream,
+            Some(StreamOption::ReturnOnce)
+        );
+        assert_eq!(
+            messages_request_body.temperature,
+            Some(Temperature::new(0.5).unwrap())
+        );
+        assert_eq!(
+            messages_request_body.top_p,
+            Some(TopP::new(0.5).unwrap())
+        );
+        assert_eq!(
+            messages_request_body.top_k,
+            Some(TopK::new(50))
+        );
+    }
+    
+    #[test]
+    fn builder_with_max_tokens() {
+        let messages_request_body =
+            MessagesRequestBuilder::new_with_max_tokens(
+                ClaudeModel::Claude3Sonnet20240229,
+                16,
+            )
+            .unwrap()
+            .messages(vec![])
+            .system(SystemPrompt::new("system-prompt"))
+            .metadata(Metadata {
+                user_id: "metadata".into(),
+            })
+            .stop_sequences(vec![StopSequence::new(
+                "stop-sequence",
+            )])
+            .stream(StreamOption::ReturnOnce)
+            .temperature(Temperature::new(0.5).unwrap())
+            .top_p(TopP::new(0.5).unwrap())
+            .top_k(TopK::new(50))
+            .build();
 
         assert_eq!(
             messages_request_body.model,

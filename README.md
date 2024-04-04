@@ -225,6 +225,23 @@ let request_body = MessagesRequestBody {
 };
 ```
 
+You can also use the builder pattern with `clust::messages::MessagesRequestBuilder`:
+
+```rust,no_run
+use clust::messages::MessagesRequestBuilder;
+use clust::messages::ClaudeModel;
+use clust::messages::Message;
+use clust::messages::SystemPrompt;
+
+let request_body = MessagesRequestBuilder::new_with_max_tokens(
+    ClaudeModel::Claude3Sonnet20240229,
+    1024,
+)?
+.messages(vec![Message::user("Hello, Claude!")])
+.system(SystemPrompt::new("You are an excellent AI assistant."))
+.build();
+```
+
 ### API calling
 
 Call the API by `clust::Client::create_a_message` with the request body.
