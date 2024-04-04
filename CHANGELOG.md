@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support `Future` for `clust::messages::AsyncTool` by `clust::attributes::clust_tool`.
+
 ## [0.8.0] - 2024-04-04
 
 ### Added
