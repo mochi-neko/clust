@@ -207,7 +207,7 @@
 //! let request_body = MessagesRequestBuilder::new_with_max_tokens(
 //!     ClaudeModel::Claude3Sonnet20240229,
 //!     1024,
-//! )?
+//! ).unwrap()
 //! .messages(vec![Message::user("Hello, Claude!")])
 //! .system(SystemPrompt::new("You are an excellent AI assistant."))
 //! .build();
