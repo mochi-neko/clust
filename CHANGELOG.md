@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add builder pattern for `clust::messages::MessagesRequestBody`: `clust::messages::MessagesRequestBodyBuilder`.
+- Add `clust::attributes` for attribute macros.
 
 ### Changed
 
