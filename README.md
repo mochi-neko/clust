@@ -15,7 +15,7 @@ or add the following line to your Cargo.toml:
 
 ```toml
 [dependencies]
-clust = "0.7.0"
+clust = "0.8.0"
 ```
 
 ## Supported APIs
