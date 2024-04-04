@@ -13,8 +13,8 @@ use crate::{ApiKey, Version};
 /// use clust::Version;
 ///
 /// let client = ClientBuilder::new(ApiKey::new("api-key"))
-///     .set_version(Version::V2023_06_01)
-///     .set_client(reqwest::Client::new())
+///     .version(Version::V2023_06_01)
+///     .client(reqwest::Client::new())
 ///     .build();
 /// ```
 #[derive(Clone)]
@@ -45,7 +45,7 @@ impl ClientBuilder {
     }
 
     /// Set the API version.
-    pub fn set_version(
+    pub fn version(
         mut self,
         version: Version,
     ) -> Self {
@@ -54,7 +54,7 @@ impl ClientBuilder {
     }
 
     /// Set the HTTP client.
-    pub fn set_client(
+    pub fn client(
         mut self,
         client: reqwest::Client,
     ) -> Self {
@@ -266,13 +266,13 @@ mod tests {
         assert_eq!(client.version, Version::default());
 
         let client = ClientBuilder::new(ApiKey::new("api-key"))
-            .set_version(Version::V2023_01_01)
+            .version(Version::V2023_01_01)
             .build();
         assert_eq!(client.api_key.value(), "api-key");
         assert_eq!(client.version, Version::V2023_01_01);
 
         let client = ClientBuilder::new(ApiKey::new("api-key"))
-            .set_client(
+            .client(
                 reqwest::ClientBuilder::new()
                     .timeout(std::time::Duration::from_secs(10))
                     .build()

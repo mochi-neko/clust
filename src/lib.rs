@@ -36,8 +36,8 @@
 //! use clust::Version;
 //!
 //! let client = ClientBuilder::new(ApiKey::new("your-api-key"))
-//!     .set_version(Version::V2023_06_01)
-//!     .set_client(reqwest::ClientBuilder::new().timeout(std::time::Duration::from_secs(10)).build().unwrap())
+//!     .version(Version::V2023_06_01)
+//!     .client(reqwest::ClientBuilder::new().timeout(std::time::Duration::from_secs(10)).build().unwrap())
 //!     .build();
 //! ```
 //!
