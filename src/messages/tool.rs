@@ -66,7 +66,8 @@ pub struct ToolResult {
     /// The id of the tool use request this is a result for.
     pub tool_use_id: String,
     /// The result of the tool, as a string (e.g. "content": "65 degrees") or list of nested content blocks (e.g. "content": [{"type": "text", "text": "65 degrees"}]\). During beta, only the text type content blocks are supported for tool_result content.
-    pub content: TextContentBlock,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<TextContentBlock>,
 }
 
 impl_display_for_serialize!(ToolResult);
@@ -75,7 +76,7 @@ impl ToolResult {
     /// Creates a new `ToolResult`.
     pub fn new<S, T>(
         tool_use_id: S,
-        content: T,
+        content: Option<T>,
     ) -> Self
     where
         S: Into<String>,
@@ -83,7 +84,7 @@ impl ToolResult {
     {
         Self {
             tool_use_id: tool_use_id.into(),
-            content: content.into(),
+            content: content.map(Into::into),
         }
     }
 }
@@ -210,17 +211,14 @@ mod tests {
             tool_result.tool_use_id,
             String::default()
         );
-        assert_eq!(
-            tool_result.content,
-            TextContentBlock::default()
-        );
+        assert_eq!(tool_result.content, None);
     }
 
     #[test]
     fn display_tool_result() {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: TextContentBlock::new("text"),
+            content: Some(TextContentBlock::new("text")),
         };
         assert_eq!(
             tool_result.to_string(),
@@ -232,7 +230,7 @@ mod tests {
     fn serialize_tool_result() {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: TextContentBlock::new("text"),
+            content: Some(TextContentBlock::new("text")),
         };
         assert_eq!(
             serde_json::to_string(&tool_result).unwrap(),
@@ -244,7 +242,7 @@ mod tests {
     fn deserialize_tool_result() {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: TextContentBlock::new("text"),
+            content: Some(TextContentBlock::new("text")),
         };
         assert_eq!(
             serde_json::from_str::<ToolResult>(
@@ -257,11 +255,14 @@ mod tests {
 
     #[test]
     fn new_tool_result() {
-        let tool_result = ToolResult::new("id", TextContentBlock::new("text"));
+        let tool_result = ToolResult::new(
+            "id",
+            Some(TextContentBlock::new("text")),
+        );
         assert_eq!(tool_result.tool_use_id, "id");
         assert_eq!(
             tool_result.content,
-            TextContentBlock::new("text")
+            Some(TextContentBlock::new("text"))
         );
     }
 }

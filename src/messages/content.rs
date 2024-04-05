@@ -32,7 +32,7 @@ use crate::messages::{
 /// let content = Content::MultipleBlocks(vec![
 ///     ContentBlock::ToolResult(ToolResultContentBlock::new(ToolResult::new(
 ///         "tool_use_id",
-///         "content",
+///         Some("content"),
 ///     ))),
 /// ]);
 /// let content = Content::MultipleBlocks(vec![
@@ -45,7 +45,7 @@ use crate::messages::{
 /// let content = Content::from(vec![ContentBlock::from("text")]);
 /// let content = Content::from(ImageContentSource::base64(ImageMediaType::Png, "base64"));
 /// let content = Content::from(ToolUse::new("id", "name", serde_json::Value::Null));
-/// let content = Content::from(ToolResult::new("tool_use_id", "content"));
+/// let content = Content::from(ToolResult::new("tool_use_id", Some("content")));
 /// let content = Content::from(vec![
 ///     ContentBlock::from("text"),
 ///     ContentBlock::from(ImageContentSource::base64(ImageMediaType::Png, "base64")),
@@ -56,7 +56,7 @@ use crate::messages::{
 /// let content: Content = vec![ContentBlock::from("text")].into();
 /// let content: Content = ImageContentSource::base64(ImageMediaType::Png, "base64").into();
 /// let content: Content = ToolUse::new("id", "name", serde_json::Value::Null).into();
-/// let content: Content = ToolResult::new("tool_use_id", "content").into();
+/// let content: Content = ToolResult::new("tool_use_id", Some("content")).into();
 /// let content: Content = vec![
 ///     "text".into(),
 ///     ImageContentSource::base64(ImageMediaType::Png, "base64").into(),
@@ -1101,25 +1101,25 @@ mod tests {
     #[test]
     fn new_tool_result_content_block() {
         let tool_result_content_block = ToolResultContentBlock::new(
-            ToolResult::new("tool_use_id", "content"),
+            ToolResult::new("tool_use_id", Some("content")),
         );
         assert_eq!(
             tool_result_content_block,
             ToolResultContentBlock {
                 _type: ContentType::ToolResult,
-                tool_result: ToolResult::new("tool_use_id", "content"),
+                tool_result: ToolResult::new("tool_use_id", Some("content")),
                 error: None,
             }
         );
 
         let tool_result_content_block = ToolResultContentBlock::error(
-            ToolResult::new("tool_use_id", "content"),
+            ToolResult::new("tool_use_id", Some("content")),
         );
         assert_eq!(
             tool_result_content_block,
             ToolResultContentBlock {
                 _type: ContentType::ToolResult,
-                tool_result: ToolResult::new("tool_use_id", "content"),
+                tool_result: ToolResult::new("tool_use_id", Some("content")),
                 error: Some(true),
             }
         );
@@ -1141,7 +1141,7 @@ mod tests {
     fn display_tool_result_content_block() {
         let tool_result_content_block = ToolResultContentBlock {
             _type: ContentType::ToolResult,
-            tool_result: ToolResult::new("tool_use_id", "content"),
+            tool_result: ToolResult::new("tool_use_id", Some("content")),
             error: None,
         };
         assert_eq!(
@@ -1151,7 +1151,7 @@ mod tests {
 
         let tool_result_content_block = ToolResultContentBlock {
             _type: ContentType::ToolResult,
-            tool_result: ToolResult::new("tool_use_id", "content"),
+            tool_result: ToolResult::new("tool_use_id", Some("content")),
             error: Some(true),
         };
         assert_eq!(
@@ -1164,7 +1164,7 @@ mod tests {
     fn serialize_tool_result_content_block() {
         let tool_result_content_block = ToolResultContentBlock {
             _type: ContentType::ToolResult,
-            tool_result: ToolResult::new("tool_use_id", "content"),
+            tool_result: ToolResult::new("tool_use_id", Some("content")),
             error: None,
         };
         assert_eq!(
@@ -1174,7 +1174,7 @@ mod tests {
 
         let tool_result_content_block = ToolResultContentBlock {
             _type: ContentType::ToolResult,
-            tool_result: ToolResult::new("tool_use_id", "content"),
+            tool_result: ToolResult::new("tool_use_id", Some("content")),
             error: Some(true),
         };
         assert_eq!(
@@ -1187,7 +1187,7 @@ mod tests {
     fn deserialize_tool_result_content_block() {
         let tool_result_content_block = ToolResultContentBlock {
             _type: ContentType::ToolResult,
-            tool_result: ToolResult::new("tool_use_id", "content"),
+            tool_result: ToolResult::new("tool_use_id", Some("content")),
             error: None,
         };
         assert_eq!(
@@ -1197,7 +1197,7 @@ mod tests {
 
         let tool_result_content_block = ToolResultContentBlock {
             _type: ContentType::ToolResult,
-            tool_result: ToolResult::new("tool_use_id", "content"),
+            tool_result: ToolResult::new("tool_use_id", Some("content")),
             error: Some(true),
         };
         assert_eq!(
@@ -1243,13 +1243,13 @@ mod tests {
 
         let content_block =
             ContentBlock::ToolResult(ToolResultContentBlock::new(
-                ToolResult::new("tool_use_id", "content"),
+                ToolResult::new("tool_use_id", Some("content")),
             ));
         assert_eq!(
             content_block,
             ContentBlock::ToolResult(ToolResultContentBlock {
                 _type: ContentType::ToolResult,
-                tool_result: ToolResult::new("tool_use_id", "content"),
+                tool_result: ToolResult::new("tool_use_id", Some("content")),
                 error: None,
             })
         );
@@ -1291,7 +1291,7 @@ mod tests {
 
         let content_block =
             ContentBlock::ToolResult(ToolResultContentBlock::new(
-                ToolResult::new("tool_use_id", "content"),
+                ToolResult::new("tool_use_id", Some("content")),
             ));
         assert_eq!(
             content_block.to_string(),
@@ -1300,7 +1300,7 @@ mod tests {
 
         let content_block =
             ContentBlock::ToolResult(ToolResultContentBlock::error(
-                ToolResult::new("tool_use_id", "content"),
+                ToolResult::new("tool_use_id", Some("content")),
             ));
         assert_eq!(
             content_block.to_string(),
@@ -1336,7 +1336,7 @@ mod tests {
 
         let content_block =
             ContentBlock::ToolResult(ToolResultContentBlock::new(
-                ToolResult::new("tool_use_id", "content"),
+                ToolResult::new("tool_use_id", Some("content")),
             ));
         assert_eq!(
             serde_json::to_string(&content_block).unwrap(),
@@ -1345,7 +1345,7 @@ mod tests {
 
         let content_block =
             ContentBlock::ToolResult(ToolResultContentBlock::error(
-                ToolResult::new("tool_use_id", "content"),
+                ToolResult::new("tool_use_id", Some("content")),
             ));
         assert_eq!(
             serde_json::to_string(&content_block).unwrap(),
@@ -1384,7 +1384,7 @@ mod tests {
 
         let content_block =
             ContentBlock::ToolResult(ToolResultContentBlock::new(
-                ToolResult::new("tool_use_id", "content"),
+                ToolResult::new("tool_use_id", Some("content")),
             ));
         assert_eq!(
             serde_json::from_str::<ContentBlock>("{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"}}").unwrap(),
@@ -1393,7 +1393,7 @@ mod tests {
 
         let content_block =
             ContentBlock::ToolResult(ToolResultContentBlock::error(
-                ToolResult::new("tool_use_id", "content"),
+                ToolResult::new("tool_use_id", Some("content")),
             ));
         assert_eq!(
             serde_json::from_str::<ContentBlock>("{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\": {\"type\":\"text\",\"text\":\"content\"},\"error\":true}").unwrap(),
@@ -1772,13 +1772,13 @@ mod tests {
             Content::from(vec![
                 ContentBlock::from(ToolResult::new(
                     "tool_use_id",
-                    "content"
+                    Some("content")
                 )),
                 ContentBlock::from("text"),
             ])
             .flatten_into_tool_result()
             .unwrap(),
-            ToolResult::new("tool_use_id", "content")
+            ToolResult::new("tool_use_id", Some("content"))
         );
     }
 }
