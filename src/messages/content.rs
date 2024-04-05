@@ -6,13 +6,15 @@ use crate::macros::{
     impl_enum_struct_serialization,
     impl_enum_with_string_or_array_serialization,
 };
-use crate::messages::{ContentFlatteningError, ImageMediaTypeParseError};
+use crate::messages::{
+    ContentFlatteningError, ImageMediaTypeParseError, ToolResult, ToolUse,
+};
 
 /// The content of the message.
 ///
 /// ## Example
 /// ```rust
-/// use clust::messages::{Content, ContentBlock, ImageContentBlock, ImageContentSource, ImageMediaType, TextContentBlock, ToolUseContentBlock};
+/// use clust::messages::{Content, ContentBlock, ImageContentBlock, ImageContentSource, ImageMediaType, TextContentBlock, ToolResult, ToolUse, ToolUseContentBlock, ToolResultContentBlock};
 ///
 /// // Manual
 /// let content = Content::SingleText("text".to_string());
@@ -21,7 +23,17 @@ use crate::messages::{ContentFlatteningError, ImageMediaTypeParseError};
 ///     ContentBlock::Image(ImageContentBlock::new(ImageContentSource::base64(ImageMediaType::Png, "base64")))
 /// ]);
 /// let content = Content::MultipleBlocks(vec![
-///     ContentBlock::ToolUse(ToolUseContentBlock::new("id", "name", serde_json::Value::Null)),
+///     ContentBlock::ToolUse(ToolUseContentBlock::new(ToolUse::new(
+///         "id",
+///         "name",
+///          serde_json::Value::Null,
+///     )))
+/// ]);
+/// let content = Content::MultipleBlocks(vec![
+///     ContentBlock::ToolResult(ToolResultContentBlock::new(ToolResult::new(
+///         "tool_use_id",
+///         "content",
+///     ))),
 /// ]);
 /// let content = Content::MultipleBlocks(vec![
 ///     ContentBlock::Text(TextContentBlock::new("text")),
@@ -32,7 +44,8 @@ use crate::messages::{ContentFlatteningError, ImageMediaTypeParseError};
 /// let content = Content::from("text");
 /// let content = Content::from(vec![ContentBlock::from("text")]);
 /// let content = Content::from(ImageContentSource::base64(ImageMediaType::Png, "base64"));
-/// let content = Content::from(ToolUseContentBlock::new("id", "name", serde_json::Value::Null));
+/// let content = Content::from(ToolUse::new("id", "name", serde_json::Value::Null));
+/// let content = Content::from(ToolResult::new("tool_use_id", "content"));
 /// let content = Content::from(vec![
 ///     ContentBlock::from("text"),
 ///     ContentBlock::from(ImageContentSource::base64(ImageMediaType::Png, "base64")),
@@ -42,7 +55,8 @@ use crate::messages::{ContentFlatteningError, ImageMediaTypeParseError};
 /// let content: Content = "text".into();
 /// let content: Content = vec![ContentBlock::from("text")].into();
 /// let content: Content = ImageContentSource::base64(ImageMediaType::Png, "base64").into();
-/// let content: Content = ToolUseContentBlock::new("id", "name", serde_json::Value::Null).into();
+/// let content: Content = ToolUse::new("id", "name", serde_json::Value::Null).into();
+/// let content: Content = ToolResult::new("tool_use_id", "content").into();
 /// let content: Content = vec![
 ///     "text".into(),
 ///     ImageContentSource::base64(ImageMediaType::Png, "base64").into(),
@@ -76,9 +90,19 @@ impl From<ImageContentSource> for Content {
     }
 }
 
-impl From<ToolUseContentBlock> for Content {
-    fn from(tool_use: ToolUseContentBlock) -> Self {
-        Self::MultipleBlocks(vec![ContentBlock::ToolUse(tool_use)])
+impl From<ToolUse> for Content {
+    fn from(tool_use: ToolUse) -> Self {
+        Self::MultipleBlocks(vec![
+            ContentBlock::ToolUse(tool_use.into()),
+        ])
+    }
+}
+
+impl From<ToolResult> for Content {
+    fn from(tool_result: ToolResult) -> Self {
+        Self::MultipleBlocks(vec![
+            ContentBlock::ToolResult(tool_result.into()),
+        ])
     }
 }
 
@@ -138,14 +162,40 @@ impl Content {
     ///     - Otherwise => Returns "`Err(NotFoundTargetBlock)`".
     pub fn flatten_into_tool_use(
         &self
-    ) -> Result<ToolUseContentBlock, ContentFlatteningError> {
+    ) -> Result<ToolUse, ContentFlatteningError> {
         match self {
             | Content::SingleText(_) => {
                 Err(ContentFlatteningError::NotFoundTargetBlock)
             },
             | Content::MultipleBlocks(block) => match block.first() {
                 | Some(first) => match first {
-                    | ContentBlock::ToolUse(tool_use) => Ok(tool_use.clone()),
+                    | ContentBlock::ToolUse(tool_use) => {
+                        Ok(tool_use.tool_use.clone())
+                    },
+                    | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
+                },
+                | None => Err(ContentFlatteningError::Empty),
+            },
+        }
+    }
+
+    /// Flattens the content into a single tool result.
+    /// - `Content::SingleText` => Returns "`Err(NotFoundTargetBlock)`"
+    /// - `Content::MultipleBlock` =>
+    ///     - Has `ContentBlock::ToolResult` at the first block => Returns "`Ok(tool_result)`"
+    ///     - Otherwise => Returns "`Err(NotFoundTargetBlock)`".
+    pub fn flatten_into_tool_result(
+        &self
+    ) -> Result<ToolResult, ContentFlatteningError> {
+        match self {
+            | Content::SingleText(_) => {
+                Err(ContentFlatteningError::NotFoundTargetBlock)
+            },
+            | Content::MultipleBlocks(block) => match block.first() {
+                | Some(first) => match first {
+                    | ContentBlock::ToolResult(tool_result) => Ok(tool_result
+                        .tool_result
+                        .clone()),
                     | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
                 },
                 | None => Err(ContentFlatteningError::Empty),
@@ -163,6 +213,8 @@ pub enum ContentBlock {
     Image(ImageContentBlock),
     /// The tool use content block.
     ToolUse(ToolUseContentBlock),
+    /// The tool result content block.
+    ToolResult(ToolResultContentBlock),
 }
 
 impl Default for ContentBlock {
@@ -189,12 +241,25 @@ impl From<ImageContentSource> for ContentBlock {
     }
 }
 
+impl From<ToolUse> for ContentBlock {
+    fn from(tool_use: ToolUse) -> Self {
+        Self::ToolUse(tool_use.into())
+    }
+}
+
+impl From<ToolResult> for ContentBlock {
+    fn from(tool_result: ToolResult) -> Self {
+        Self::ToolResult(tool_result.into())
+    }
+}
+
 impl_enum_struct_serialization!(
     ContentBlock,
     type,
     Text(TextContentBlock, "text"),
     Image(ImageContentBlock, "image"),
-    ToolUse(ToolUseContentBlock, "tool_use")
+    ToolUse(ToolUseContentBlock, "tool_use"),
+    ToolResult(ToolResultContentBlock, "tool_result")
 );
 
 impl_display_for_serialize!(ContentBlock);
@@ -293,6 +358,8 @@ pub enum ContentType {
     TextDelta,
     /// tool_use
     ToolUse,
+    /// tool_result
+    ToolResult,
 }
 
 impl Default for ContentType {
@@ -319,6 +386,9 @@ impl Display for ContentType {
             | ContentType::ToolUse => {
                 write!(f, "tool_use")
             },
+            | ContentType::ToolResult => {
+                write!(f, "tool_result")
+            },
         }
     }
 }
@@ -328,7 +398,8 @@ impl_enum_string_serialization!(
     Text => "text",
     Image => "image",
     TextDelta => "text_delta",
-    ToolUse => "tool_use"
+    ToolUse => "tool_use",
+    ToolResult => "tool_result"
 );
 
 /// The image content source.
@@ -481,51 +552,92 @@ pub struct ToolUseContentBlock {
     /// The content type. It is always `tool_use`.
     #[serde(rename = "type")]
     pub _type: ContentType,
-    /// The ID of the used tool.
-    pub id: String,
-    /// The name of the used tool.
-    pub name: String,
-    /// The input of the used tool.
-    pub input: serde_json::Value,
+    /// The tool use.
+    #[serde(flatten)]
+    pub tool_use: ToolUse,
 }
 
 impl Default for ToolUseContentBlock {
     fn default() -> Self {
         Self {
             _type: ContentType::ToolUse,
-            id: String::new(),
-            name: String::new(),
-            input: serde_json::Value::Null,
+            tool_use: ToolUse::default(),
         }
     }
 }
 
 impl_display_for_serialize!(ToolUseContentBlock);
 
+impl From<ToolUse> for ToolUseContentBlock {
+    fn from(tool_use: ToolUse) -> Self {
+        Self::new(tool_use)
+    }
+}
+
 impl ToolUseContentBlock {
     /// Creates a new tool use content block.
-    pub fn new<S, T>(
-        id: S,
-        name: T,
-        input: serde_json::Value,
-    ) -> Self
-    where
-        S: Into<String>,
-        T: Into<String>,
-    {
+    pub fn new(tool_use: ToolUse) -> Self {
         Self {
             _type: ContentType::ToolUse,
-            id: id.into(),
-            name: name.into(),
-            input,
+            tool_use,
+        }
+    }
+}
+
+/// The tool result content block.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ToolResultContentBlock {
+    /// The content type. It is always `tool_result`.
+    #[serde(rename = "type")]
+    pub _type: ContentType,
+    /// The tool result.
+    #[serde(flatten)]
+    pub tool_result: ToolResult,
+    /// Set to true if the tool execution resulted in an error.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<bool>,
+}
+
+impl Default for ToolResultContentBlock {
+    fn default() -> Self {
+        Self {
+            _type: ContentType::ToolResult,
+            tool_result: ToolResult::default(),
+            error: None,
+        }
+    }
+}
+
+impl_display_for_serialize!(ToolResultContentBlock);
+
+impl From<ToolResult> for ToolResultContentBlock {
+    fn from(tool_result: ToolResult) -> Self {
+        Self::new(tool_result)
+    }
+}
+
+impl ToolResultContentBlock {
+    /// Creates a new tool result content block.
+    pub fn new(tool_result: ToolResult) -> Self {
+        Self {
+            _type: ContentType::ToolResult,
+            tool_result,
+            error: None,
+        }
+    }
+
+    /// Creates a new tool result content block as an error.
+    pub fn error(tool_result: ToolResult) -> Self {
+        Self {
+            _type: ContentType::ToolResult,
+            tool_result,
+            error: Some(true),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Map;
-
     use super::*;
 
     #[test]
@@ -556,6 +668,10 @@ mod tests {
             ContentType::ToolUse.to_string(),
             "tool_use"
         );
+        assert_eq!(
+            ContentType::ToolResult.to_string(),
+            "tool_result"
+        );
     }
 
     #[test]
@@ -576,6 +692,10 @@ mod tests {
             serde_json::to_string(&ContentType::ToolUse).unwrap(),
             "\"tool_use\""
         );
+        assert_eq!(
+            serde_json::to_string(&ContentType::ToolResult).unwrap(),
+            "\"tool_result\""
+        );
     }
 
     #[test]
@@ -595,6 +715,10 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<ContentType>("\"tool_use\"").unwrap(),
             ContentType::ToolUse
+        );
+        assert_eq!(
+            serde_json::from_str::<ContentType>("\"tool_result\"").unwrap(),
+            ContentType::ToolResult
         );
     }
 
@@ -913,18 +1037,16 @@ mod tests {
 
     #[test]
     fn new_tool_use_content_block() {
-        let tool_use_content_block = ToolUseContentBlock::new(
+        let tool_use_content_block = ToolUseContentBlock::new(ToolUse::new(
             "id",
             "name",
-            serde_json::Value::Object(Map::new()),
-        );
+            serde_json::Value::Null,
+        ));
         assert_eq!(
             tool_use_content_block,
             ToolUseContentBlock {
                 _type: ContentType::ToolUse,
-                id: "id".to_string(),
-                name: "name".to_string(),
-                input: serde_json::Value::Object(Map::new()),
+                tool_use: ToolUse::new("id", "name", serde_json::Value::Null,),
             }
         );
     }
@@ -935,9 +1057,7 @@ mod tests {
             ToolUseContentBlock::default(),
             ToolUseContentBlock {
                 _type: ContentType::ToolUse,
-                id: String::new(),
-                name: String::new(),
-                input: serde_json::Value::Null,
+                tool_use: ToolUse::default(),
             }
         );
     }
@@ -946,13 +1066,143 @@ mod tests {
     fn display_tool_use_content_block() {
         let tool_use_content_block = ToolUseContentBlock {
             _type: ContentType::ToolUse,
-            id: "id".to_string(),
-            name: "name".to_string(),
-            input: serde_json::Value::Object(Map::new()),
+            tool_use: ToolUse::new("id", "name", serde_json::Value::Null),
         };
         assert_eq!(
             tool_use_content_block.to_string(),
-            "{\n  \"type\": \"tool_use\",\n  \"id\": \"id\",\n  \"name\": \"name\",\n  \"input\": {}\n}"
+            "{\n  \"type\": \"tool_use\",\n  \"id\": \"id\",\n  \"name\": \"name\",\n  \"input\": null\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_tool_use_content_block() {
+        let tool_use_content_block = ToolUseContentBlock {
+            _type: ContentType::ToolUse,
+            tool_use: ToolUse::new("id", "name", serde_json::Value::Null),
+        };
+        assert_eq!(
+            serde_json::to_string(&tool_use_content_block).unwrap(),
+            "{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":null}"
+        );
+    }
+
+    #[test]
+    fn deserialize_tool_use_content_block() {
+        let tool_use_content_block = ToolUseContentBlock {
+            _type: ContentType::ToolUse,
+            tool_use: ToolUse::new("id", "name", serde_json::Value::Null),
+        };
+        assert_eq!(
+            serde_json::from_str::<ToolUseContentBlock>("{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":null}").unwrap(),
+            tool_use_content_block
+        );
+    }
+
+    #[test]
+    fn new_tool_result_content_block() {
+        let tool_result_content_block = ToolResultContentBlock::new(
+            ToolResult::new("tool_use_id", "content"),
+        );
+        assert_eq!(
+            tool_result_content_block,
+            ToolResultContentBlock {
+                _type: ContentType::ToolResult,
+                tool_result: ToolResult::new("tool_use_id", "content"),
+                error: None,
+            }
+        );
+
+        let tool_result_content_block = ToolResultContentBlock::error(
+            ToolResult::new("tool_use_id", "content"),
+        );
+        assert_eq!(
+            tool_result_content_block,
+            ToolResultContentBlock {
+                _type: ContentType::ToolResult,
+                tool_result: ToolResult::new("tool_use_id", "content"),
+                error: Some(true),
+            }
+        );
+    }
+
+    #[test]
+    fn default_tool_result_content_block() {
+        assert_eq!(
+            ToolResultContentBlock::default(),
+            ToolResultContentBlock {
+                _type: ContentType::ToolResult,
+                tool_result: ToolResult::default(),
+                error: None,
+            }
+        );
+    }
+
+    #[test]
+    fn display_tool_result_content_block() {
+        let tool_result_content_block = ToolResultContentBlock {
+            _type: ContentType::ToolResult,
+            tool_result: ToolResult::new("tool_use_id", "content"),
+            error: None,
+        };
+        assert_eq!(
+            tool_result_content_block.to_string(),
+            "{\n  \"type\": \"tool_result\",\n  \"tool_use_id\": \"tool_use_id\",\n  \"content\": {\n    \"type\": \"text\",\n    \"text\": \"content\"\n  }\n}"
+        );
+
+        let tool_result_content_block = ToolResultContentBlock {
+            _type: ContentType::ToolResult,
+            tool_result: ToolResult::new("tool_use_id", "content"),
+            error: Some(true),
+        };
+        assert_eq!(
+            tool_result_content_block.to_string(),
+            "{\n  \"type\": \"tool_result\",\n  \"tool_use_id\": \"tool_use_id\",\n  \"content\": {\n    \"type\": \"text\",\n    \"text\": \"content\"\n  },\n  \"error\": true\n}"
+        );
+    }
+
+    #[test]
+    fn serialize_tool_result_content_block() {
+        let tool_result_content_block = ToolResultContentBlock {
+            _type: ContentType::ToolResult,
+            tool_result: ToolResult::new("tool_use_id", "content"),
+            error: None,
+        };
+        assert_eq!(
+            serde_json::to_string(&tool_result_content_block).unwrap(),
+            "{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"}}"
+        );
+
+        let tool_result_content_block = ToolResultContentBlock {
+            _type: ContentType::ToolResult,
+            tool_result: ToolResult::new("tool_use_id", "content"),
+            error: Some(true),
+        };
+        assert_eq!(
+            serde_json::to_string(&tool_result_content_block).unwrap(),
+            "{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"},\"error\":true}"
+        );
+    }
+
+    #[test]
+    fn deserialize_tool_result_content_block() {
+        let tool_result_content_block = ToolResultContentBlock {
+            _type: ContentType::ToolResult,
+            tool_result: ToolResult::new("tool_use_id", "content"),
+            error: None,
+        };
+        assert_eq!(
+            serde_json::from_str::<ToolResultContentBlock>("{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"}}").unwrap(),
+            tool_result_content_block
+        );
+
+        let tool_result_content_block = ToolResultContentBlock {
+            _type: ContentType::ToolResult,
+            tool_result: ToolResult::new("tool_use_id", "content"),
+            error: Some(true),
+        };
+        assert_eq!(
+            serde_json::from_str::<ToolResultContentBlock>("{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"},\"error\":true}").unwrap(),
+            tool_result_content_block
         );
     }
 
@@ -981,17 +1231,26 @@ mod tests {
         );
 
         let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
-            "id",
-            "name",
-            serde_json::Value::Object(Map::new()),
+            ToolUse::new("id", "name", serde_json::Value::Null),
         ));
         assert_eq!(
             content_block,
             ContentBlock::ToolUse(ToolUseContentBlock {
                 _type: ContentType::ToolUse,
-                id: "id".to_string(),
-                name: "name".to_string(),
-                input: serde_json::Value::Object(Map::new()),
+                tool_use: ToolUse::new("id", "name", serde_json::Value::Null),
+            })
+        );
+
+        let content_block =
+            ContentBlock::ToolResult(ToolResultContentBlock::new(
+                ToolResult::new("tool_use_id", "content"),
+            ));
+        assert_eq!(
+            content_block,
+            ContentBlock::ToolResult(ToolResultContentBlock {
+                _type: ContentType::ToolResult,
+                tool_result: ToolResult::new("tool_use_id", "content"),
+                error: None,
             })
         );
     }
@@ -1023,13 +1282,29 @@ mod tests {
         );
 
         let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
-            "id",
-            "name",
-            serde_json::Value::Object(Map::new()),
+            ToolUse::new("id", "name", serde_json::Value::Null),
         ));
         assert_eq!(
             content_block.to_string(),
-            "{\n  \"type\": \"tool_use\",\n  \"id\": \"id\",\n  \"name\": \"name\",\n  \"input\": {}\n}"
+            "{\n  \"type\": \"tool_use\",\n  \"id\": \"id\",\n  \"name\": \"name\",\n  \"input\": null\n}"
+        );
+
+        let content_block =
+            ContentBlock::ToolResult(ToolResultContentBlock::new(
+                ToolResult::new("tool_use_id", "content"),
+            ));
+        assert_eq!(
+            content_block.to_string(),
+            "{\n  \"type\": \"tool_result\",\n  \"tool_use_id\": \"tool_use_id\",\n  \"content\": {\n    \"type\": \"text\",\n    \"text\": \"content\"\n  }\n}"
+        );
+
+        let content_block =
+            ContentBlock::ToolResult(ToolResultContentBlock::error(
+                ToolResult::new("tool_use_id", "content"),
+            ));
+        assert_eq!(
+            content_block.to_string(),
+            "{\n  \"type\": \"tool_result\",\n  \"tool_use_id\": \"tool_use_id\",\n  \"content\": {\n    \"type\": \"text\",\n    \"text\": \"content\"\n  },\n  \"error\": true\n}"
         );
     }
 
@@ -1052,13 +1327,29 @@ mod tests {
         );
 
         let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
-            "id",
-            "name",
-            serde_json::Value::Object(Map::new()),
+            ToolUse::new("id", "name", serde_json::Value::Null),
         ));
         assert_eq!(
             serde_json::to_string(&content_block).unwrap(),
-            "{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":{}}"
+            "{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":null}"
+        );
+
+        let content_block =
+            ContentBlock::ToolResult(ToolResultContentBlock::new(
+                ToolResult::new("tool_use_id", "content"),
+            ));
+        assert_eq!(
+            serde_json::to_string(&content_block).unwrap(),
+            "{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"}}"
+        );
+
+        let content_block =
+            ContentBlock::ToolResult(ToolResultContentBlock::error(
+                ToolResult::new("tool_use_id", "content"),
+            ));
+        assert_eq!(
+            serde_json::to_string(&content_block).unwrap(),
+            "{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"},\"error\":true}"
         );
     }
 
@@ -1084,12 +1375,28 @@ mod tests {
         );
 
         let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
-            "id",
-            "name",
-            serde_json::Value::Object(Map::new()),
+            ToolUse::new("id", "name", serde_json::Value::Null),
         ));
         assert_eq!(
-            serde_json::from_str::<ContentBlock>("{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":{}}").unwrap(),
+            serde_json::from_str::<ContentBlock>("{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":null}").unwrap(),
+            content_block
+        );
+
+        let content_block =
+            ContentBlock::ToolResult(ToolResultContentBlock::new(
+                ToolResult::new("tool_use_id", "content"),
+            ));
+        assert_eq!(
+            serde_json::from_str::<ContentBlock>("{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\":{\"type\":\"text\",\"text\":\"content\"}}").unwrap(),
+            content_block
+        );
+
+        let content_block =
+            ContentBlock::ToolResult(ToolResultContentBlock::error(
+                ToolResult::new("tool_use_id", "content"),
+            ));
+        assert_eq!(
+            serde_json::from_str::<ContentBlock>("{\"type\":\"tool_result\",\"tool_use_id\":\"tool_use_id\",\"content\": {\"type\":\"text\",\"text\":\"content\"},\"error\":true}").unwrap(),
             content_block
         );
     }
@@ -1120,6 +1427,30 @@ mod tests {
             ContentBlock::Image(ImageContentBlock::new(
                 ImageContentSource::default()
             ))
+        );
+
+        assert_eq!(
+            ContentBlock::from(ToolUse::new(
+                "id",
+                "name",
+                serde_json::Value::Null
+            )),
+            ContentBlock::ToolUse(ToolUseContentBlock::new(ToolUse::new(
+                "id",
+                "name",
+                serde_json::Value::Null
+            )))
+        );
+
+        let content_block: ContentBlock =
+            ToolUse::new("id", "name", serde_json::Value::Null).into();
+        assert_eq!(
+            content_block,
+            ContentBlock::ToolUse(ToolUseContentBlock::new(ToolUse::new(
+                "id",
+                "name",
+                serde_json::Value::Null
+            )))
         );
     }
 
@@ -1390,20 +1721,64 @@ mod tests {
 
         assert_eq!(
             Content::from(vec![
-                ContentBlock::from(ToolUseContentBlock::new(
+                ContentBlock::from(ToolUse::new(
                     "id",
                     "name",
-                    serde_json::Value::Object(Map::new())
+                    serde_json::Value::Object(serde_json::Map::new())
                 )),
                 ContentBlock::from("text"),
             ])
             .flatten_into_tool_use()
             .unwrap(),
-            ToolUseContentBlock::new(
+            ToolUse::new(
                 "id",
                 "name",
-                serde_json::Value::Object(Map::new())
+                serde_json::Value::Object(serde_json::Map::new())
             )
+        );
+    }
+
+    #[test]
+    fn flatten_into_tool_result() {
+        assert!(Content::from("text")
+            .flatten_into_tool_result()
+            .is_err());
+
+        assert!(Content::from(vec![
+            ContentBlock::from("text"),
+            ContentBlock::from(ImageContentSource::default()),
+        ])
+        .flatten_into_tool_result()
+        .is_err());
+
+        assert!(Content::from(vec![
+            ContentBlock::from("text"),
+            ContentBlock::from("second"),
+        ])
+        .flatten_into_tool_result()
+        .is_err());
+
+        assert!(Content::from(vec![])
+            .flatten_into_tool_result()
+            .is_err());
+
+        assert!(
+            Content::from(ImageContentSource::default())
+                .flatten_into_tool_result()
+                .is_err()
+        );
+
+        assert_eq!(
+            Content::from(vec![
+                ContentBlock::from(ToolResult::new(
+                    "tool_use_id",
+                    "content"
+                )),
+                ContentBlock::from("text"),
+            ])
+            .flatten_into_tool_result()
+            .unwrap(),
+            ToolResult::new("tool_use_id", "content")
         );
     }
 }
