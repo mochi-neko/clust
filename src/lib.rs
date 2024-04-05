@@ -529,6 +529,7 @@
 //! See also the [examples](./examples) directory for more examples.
 
 mod api_key;
+mod beta;
 mod client;
 mod error;
 mod version;
@@ -541,6 +542,7 @@ pub mod messages;
 pub mod attributes;
 
 pub use api_key::ApiKey;
+pub use beta::Beta;
 pub use client::Client;
 pub use client::ClientBuilder;
 pub use error::ApiError;

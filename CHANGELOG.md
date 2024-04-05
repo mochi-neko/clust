@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support `Future` for `clust::messages::AsyncTool` by `clust::attributes::clust_tool`.
 
+## [0.9.0] - 2024-04-XX
+
+### Added
+
+- Add the beta feature header for the `clust::Client`.
+
 ## [0.8.0] - 2024-04-04
 
 ### Added
