@@ -5,9 +5,11 @@ use std::fmt::Display;
 ///
 /// This may be one of the following values:
 ///
-/// "end_turn": the model reached a natural stopping point
-/// "max_tokens": we exceeded the requested max_tokens or the model's maximum
-/// "stop_sequence": one of your provided custom stop_sequences was generated
+/// - "end_turn": the model reached a natural stopping point
+/// - "max_tokens": we exceeded the requested max_tokens or the model's maximum
+/// - "stop_sequence": one of your provided custom stop_sequences was generated
+/// - "tool_use": Claude wants to use an external tool
+///
 /// Note that these values are different from those in /v1/complete, where end_turn and stop_sequence were not differentiated.
 ///
 /// In non-streaming mode this value is always non-null. In streaming mode, it is null in the message_start event and non-null otherwise.
@@ -19,6 +21,8 @@ pub enum StopReason {
     MaxTokens,
     /// One of your provided custom stop_sequences was generated.
     StopSequence,
+    /// Claude wants to use an external tool.
+    ToolUse,
 }
 
 impl Display for StopReason {
@@ -36,6 +40,9 @@ impl Display for StopReason {
             | StopReason::StopSequence => {
                 write!(f, "stop_sequence")
             },
+            | StopReason::ToolUse => {
+                write!(f, "tool_use")
+            },
         }
     }
 }
@@ -44,7 +51,8 @@ impl_enum_string_serialization!(
     StopReason,
     EndTurn => "end_turn",
     MaxTokens => "max_tokens",
-    StopSequence => "stop_sequence"
+    StopSequence => "stop_sequence",
+    ToolUse => "tool_use"
 );
 
 #[cfg(test)]
@@ -65,6 +73,10 @@ mod tests {
             StopReason::StopSequence.to_string(),
             "stop_sequence"
         );
+        assert_eq!(
+            StopReason::ToolUse.to_string(),
+            "tool_use"
+        );
     }
 
     #[test]
@@ -81,6 +93,10 @@ mod tests {
             serde_json::to_string(&StopReason::StopSequence).unwrap(),
             "\"stop_sequence\""
         );
+        assert_eq!(
+            serde_json::to_string(&StopReason::ToolUse).unwrap(),
+            "\"tool_use\""
+        );
     }
 
     #[test]
@@ -96,6 +112,10 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<StopReason>("\"stop_sequence\"").unwrap(),
             StopReason::StopSequence
+        );
+        assert_eq!(
+            serde_json::from_str::<StopReason>("\"tool_use\"").unwrap(),
+            StopReason::ToolUse
         );
     }
 }

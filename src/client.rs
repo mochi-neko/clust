@@ -209,7 +209,7 @@ impl Client {
 /// let client = ClientBuilder::new(ApiKey::new("api-key"))
 ///     .version(Version::V2023_06_01)
 ///     .client(reqwest::Client::new())
-///     .beta(Beta::Tools_2024_04_04)
+///     .beta(Beta::Tools2024_04_04)
 ///     .build();
 /// ```
 #[derive(Clone)]
@@ -315,12 +315,9 @@ mod tests {
         assert_eq!(client.version, Version::default());
 
         let client = ClientBuilder::new(ApiKey::new("api-key"))
-            .beta(Beta::Tools_2024_04_04)
+            .beta(Beta::Tools2024_04_04)
             .build();
         assert_eq!(client.api_key.value(), "api-key");
-        assert_eq!(
-            client.beta,
-            Some(Beta::Tools_2024_04_04)
-        );
+        assert_eq!(client.beta, Some(Beta::Tools2024_04_04));
     }
 }

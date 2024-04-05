@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the beta feature header for the `clust::Client`.
+- Add `clust::messages::StopReason::ToolUse`.
+- Add tools for `clust::messages::MessagesRequestBody`.
+- Add tool use content block for `clust::messages::Content`.
+
+### Removed
+
+- Remove old function calling API.
 
 ## [0.8.0] - 2024-04-04
 

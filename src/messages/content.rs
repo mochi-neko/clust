@@ -6,22 +6,22 @@ use crate::macros::{
     impl_enum_struct_serialization,
     impl_enum_with_string_or_array_serialization,
 };
-use crate::messages::{
-    ContentFlatteningError, FunctionCalls, FunctionCallsExcludingError,
-    ImageMediaTypeParseError,
-};
+use crate::messages::{ContentFlatteningError, ImageMediaTypeParseError};
 
 /// The content of the message.
 ///
 /// ## Example
 /// ```rust
-/// use clust::messages::{Content, ContentBlock, ImageContentBlock, ImageContentSource, ImageMediaType, TextContentBlock};
+/// use clust::messages::{Content, ContentBlock, ImageContentBlock, ImageContentSource, ImageMediaType, TextContentBlock, ToolUseContentBlock};
 ///
 /// // Manual
 /// let content = Content::SingleText("text".to_string());
 /// let content = Content::MultipleBlocks(vec![ContentBlock::Text(TextContentBlock::new("text"))]);
 /// let content = Content::MultipleBlocks(vec![
 ///     ContentBlock::Image(ImageContentBlock::new(ImageContentSource::base64(ImageMediaType::Png, "base64")))
+/// ]);
+/// let content = Content::MultipleBlocks(vec![
+///     ContentBlock::ToolUse(ToolUseContentBlock::new("id", "name", serde_json::Value::Null)),
 /// ]);
 /// let content = Content::MultipleBlocks(vec![
 ///     ContentBlock::Text(TextContentBlock::new("text")),
@@ -32,6 +32,7 @@ use crate::messages::{
 /// let content = Content::from("text");
 /// let content = Content::from(vec![ContentBlock::from("text")]);
 /// let content = Content::from(ImageContentSource::base64(ImageMediaType::Png, "base64"));
+/// let content = Content::from(ToolUseContentBlock::new("id", "name", serde_json::Value::Null));
 /// let content = Content::from(vec![
 ///     ContentBlock::from("text"),
 ///     ContentBlock::from(ImageContentSource::base64(ImageMediaType::Png, "base64")),
@@ -41,6 +42,7 @@ use crate::messages::{
 /// let content: Content = "text".into();
 /// let content: Content = vec![ContentBlock::from("text")].into();
 /// let content: Content = ImageContentSource::base64(ImageMediaType::Png, "base64").into();
+/// let content: Content = ToolUseContentBlock::new("id", "name", serde_json::Value::Null).into();
 /// let content: Content = vec![
 ///     "text".into(),
 ///     ImageContentSource::base64(ImageMediaType::Png, "base64").into(),
@@ -71,6 +73,12 @@ impl From<ImageContentSource> for Content {
         Self::MultipleBlocks(vec![ContentBlock::Image(
             image.into(),
         )])
+    }
+}
+
+impl From<ToolUseContentBlock> for Content {
+    fn from(tool_use: ToolUseContentBlock) -> Self {
+        Self::MultipleBlocks(vec![ContentBlock::ToolUse(tool_use)])
     }
 }
 
@@ -123,34 +131,27 @@ impl Content {
         }
     }
 
-    pub fn exclude_function_calls(
+    /// Flattens the content into a single tool use.
+    /// - `Content::SingleText` => Returns "`Err(NotFoundTargetBlock)`"
+    /// - `Content::MultipleBlock` =>
+    ///     - Has `ContentBlock::ToolUse` at the first block => Returns "`Ok(tool_use)`"
+    ///     - Otherwise => Returns "`Err(NotFoundTargetBlock)`".
+    pub fn flatten_into_tool_use(
         &self
-    ) -> Result<FunctionCalls, FunctionCallsExcludingError> {
-        let content = self.flatten_into_text()?;
-
-        let xml = extract_first_function_calls(content)
-            .ok_or(FunctionCallsExcludingError::XmlNotFound)?;
-
-        let function_calls = FunctionCalls::deserialize(&xml)?;
-        Ok(function_calls)
+    ) -> Result<ToolUseContentBlock, ContentFlatteningError> {
+        match self {
+            | Content::SingleText(_) => {
+                Err(ContentFlatteningError::NotFoundTargetBlock)
+            },
+            | Content::MultipleBlocks(block) => match block.first() {
+                | Some(first) => match first {
+                    | ContentBlock::ToolUse(tool_use) => Ok(tool_use.clone()),
+                    | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
+                },
+                | None => Err(ContentFlatteningError::Empty),
+            },
+        }
     }
-}
-
-fn extract_first_function_calls(text: &str) -> Option<String> {
-    let start_tag = "<function_calls>";
-    let end_tag = "</function_calls>";
-
-    let start_index = match text.find(start_tag) {
-        | Some(index) => index,
-        | None => return None,
-    };
-
-    let end_index = match text[start_index + start_tag.len()..].find(end_tag) {
-        | Some(index) => index + start_index + start_tag.len(),
-        | None => return None,
-    };
-
-    Some(text[start_index..end_index + end_tag.len()].to_string())
 }
 
 /// The content block of the message.
@@ -160,6 +161,8 @@ pub enum ContentBlock {
     Text(TextContentBlock),
     /// The image content block.
     Image(ImageContentBlock),
+    /// The tool use content block.
+    ToolUse(ToolUseContentBlock),
 }
 
 impl Default for ContentBlock {
@@ -190,7 +193,8 @@ impl_enum_struct_serialization!(
     ContentBlock,
     type,
     Text(TextContentBlock, "text"),
-    Image(ImageContentBlock, "image")
+    Image(ImageContentBlock, "image"),
+    ToolUse(ToolUseContentBlock, "tool_use")
 );
 
 impl_display_for_serialize!(ContentBlock);
@@ -287,6 +291,8 @@ pub enum ContentType {
     Image,
     /// text_delta
     TextDelta,
+    /// tool_use
+    ToolUse,
 }
 
 impl Default for ContentType {
@@ -310,6 +316,9 @@ impl Display for ContentType {
             | ContentType::TextDelta => {
                 write!(f, "text_delta")
             },
+            | ContentType::ToolUse => {
+                write!(f, "tool_use")
+            },
         }
     }
 }
@@ -318,7 +327,8 @@ impl_enum_string_serialization!(
     ContentType,
     Text => "text",
     Image => "image",
-    TextDelta => "text_delta"
+    TextDelta => "text_delta",
+    ToolUse => "tool_use"
 );
 
 /// The image content source.
@@ -465,11 +475,56 @@ impl ImageMediaType {
     }
 }
 
+/// The tool use content block.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ToolUseContentBlock {
+    /// The content type. It is always `tool_use`.
+    #[serde(rename = "type")]
+    pub _type: ContentType,
+    /// The ID of the used tool.
+    pub id: String,
+    /// The name of the used tool.
+    pub name: String,
+    /// The input of the used tool.
+    pub input: serde_json::Value,
+}
+
+impl Default for ToolUseContentBlock {
+    fn default() -> Self {
+        Self {
+            _type: ContentType::ToolUse,
+            id: String::new(),
+            name: String::new(),
+            input: serde_json::Value::Null,
+        }
+    }
+}
+
+impl_display_for_serialize!(ToolUseContentBlock);
+
+impl ToolUseContentBlock {
+    /// Creates a new tool use content block.
+    pub fn new<S, T>(
+        id: S,
+        name: T,
+        input: serde_json::Value,
+    ) -> Self
+    where
+        S: Into<String>,
+        T: Into<String>,
+    {
+        Self {
+            _type: ContentType::ToolUse,
+            id: id.into(),
+            name: name.into(),
+            input,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
-    use crate::messages::Invoke;
+    use serde_json::Map;
 
     use super::*;
 
@@ -497,6 +552,10 @@ mod tests {
             ContentType::TextDelta.to_string(),
             "text_delta"
         );
+        assert_eq!(
+            ContentType::ToolUse.to_string(),
+            "tool_use"
+        );
     }
 
     #[test]
@@ -513,6 +572,10 @@ mod tests {
             serde_json::to_string(&ContentType::TextDelta).unwrap(),
             "\"text_delta\""
         );
+        assert_eq!(
+            serde_json::to_string(&ContentType::ToolUse).unwrap(),
+            "\"tool_use\""
+        );
     }
 
     #[test]
@@ -528,6 +591,10 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<ContentType>("\"text_delta\"").unwrap(),
             ContentType::TextDelta
+        );
+        assert_eq!(
+            serde_json::from_str::<ContentType>("\"tool_use\"").unwrap(),
+            ContentType::ToolUse
         );
     }
 
@@ -845,6 +912,51 @@ mod tests {
     }
 
     #[test]
+    fn new_tool_use_content_block() {
+        let tool_use_content_block = ToolUseContentBlock::new(
+            "id",
+            "name",
+            serde_json::Value::Object(Map::new()),
+        );
+        assert_eq!(
+            tool_use_content_block,
+            ToolUseContentBlock {
+                _type: ContentType::ToolUse,
+                id: "id".to_string(),
+                name: "name".to_string(),
+                input: serde_json::Value::Object(Map::new()),
+            }
+        );
+    }
+
+    #[test]
+    fn default_tool_use_content_block() {
+        assert_eq!(
+            ToolUseContentBlock::default(),
+            ToolUseContentBlock {
+                _type: ContentType::ToolUse,
+                id: String::new(),
+                name: String::new(),
+                input: serde_json::Value::Null,
+            }
+        );
+    }
+
+    #[test]
+    fn display_tool_use_content_block() {
+        let tool_use_content_block = ToolUseContentBlock {
+            _type: ContentType::ToolUse,
+            id: "id".to_string(),
+            name: "name".to_string(),
+            input: serde_json::Value::Object(Map::new()),
+        };
+        assert_eq!(
+            tool_use_content_block.to_string(),
+            "{\n  \"type\": \"tool_use\",\n  \"id\": \"id\",\n  \"name\": \"name\",\n  \"input\": {}\n}"
+        );
+    }
+
+    #[test]
     fn new_content_block() {
         let content_block = ContentBlock::Text(TextContentBlock::new(
             "text".to_string(),
@@ -865,6 +977,21 @@ mod tests {
             ContentBlock::Image(ImageContentBlock {
                 _type: ContentType::Image,
                 source: ImageContentSource::default(),
+            })
+        );
+
+        let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
+            "id",
+            "name",
+            serde_json::Value::Object(Map::new()),
+        ));
+        assert_eq!(
+            content_block,
+            ContentBlock::ToolUse(ToolUseContentBlock {
+                _type: ContentType::ToolUse,
+                id: "id".to_string(),
+                name: "name".to_string(),
+                input: serde_json::Value::Object(Map::new()),
             })
         );
     }
@@ -894,6 +1021,16 @@ mod tests {
             content_block.to_string(),
             "{\n  \"type\": \"image\",\n  \"source\": {\n    \"type\": \"base64\",\n    \"media_type\": \"image/jpeg\",\n    \"data\": \"\"\n  }\n}"
         );
+
+        let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
+            "id",
+            "name",
+            serde_json::Value::Object(Map::new()),
+        ));
+        assert_eq!(
+            content_block.to_string(),
+            "{\n  \"type\": \"tool_use\",\n  \"id\": \"id\",\n  \"name\": \"name\",\n  \"input\": {}\n}"
+        );
     }
 
     #[test]
@@ -912,6 +1049,16 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&content_block).unwrap(),
             "{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}"
+        );
+
+        let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
+            "id",
+            "name",
+            serde_json::Value::Object(Map::new()),
+        ));
+        assert_eq!(
+            serde_json::to_string(&content_block).unwrap(),
+            "{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":{}}"
         );
     }
 
@@ -933,6 +1080,16 @@ mod tests {
         ));
         assert_eq!(
             serde_json::from_str::<ContentBlock>("{\"type\":\"image\",\"source\":{\"type\":\"base64\",\"media_type\":\"image/jpeg\",\"data\":\"\"}}").unwrap(),
+            content_block
+        );
+
+        let content_block = ContentBlock::ToolUse(ToolUseContentBlock::new(
+            "id",
+            "name",
+            serde_json::Value::Object(Map::new()),
+        ));
+        assert_eq!(
+            serde_json::from_str::<ContentBlock>("{\"type\":\"tool_use\",\"id\":\"id\",\"name\":\"name\",\"input\":{}}").unwrap(),
             content_block
         );
     }
@@ -1202,72 +1359,51 @@ mod tests {
     }
 
     #[test]
-    fn exclude_function_calls() -> anyhow::Result<()> {
-        let content =
-            Content::from("To find the current stock price for General Motors, I will:\n\n<function_calls>\n<invoke>\n<tool_name>get_ticker_symbol</tool_name>\n<parameters>\n<company_name>General Motors</company_name>\n</parameters>\n</invoke>\n</function_calls>");
-
-        let function_calls = content.exclude_function_calls()?;
-        assert_eq!(
-            function_calls,
-            FunctionCalls {
-                invoke: Invoke {
-                    tool_name: "get_ticker_symbol".to_string(),
-                    parameters: BTreeMap::from_iter(vec![(
-                        "company_name".to_string(),
-                        "General Motors".to_string()
-                    )]),
-                }
-            },
-        );
-
-        let content =
-            Content::from("To find the current stock price for General Motors, I will:\n\n<function_calls>\n<invoke>\n<tool_name>get_ticker_symbol</tool_name>\n<parameters>\n<company_name>General Motors</company_name>\n</parameters>\n</invoke>\n</function_calls>\n\nThis returns: \"GM\"\n\nNow that I have the ticker symbol, I can get the current price:\n\n<function_calls>\n<invoke>\n<tool_name>get_current_stock_price</tool_name>\n<parameters>\n<symbol>GM</symbol>\n</parameters>\n</invoke>\n</function_calls>\n\nThe current stock price of General Motors (GM) is $34.45.");
-
-        let function_calls = content.exclude_function_calls()?;
-        assert_eq!(
-            function_calls,
-            FunctionCalls {
-                invoke: Invoke {
-                    tool_name: "get_ticker_symbol".to_string(),
-                    parameters: BTreeMap::from_iter(vec![(
-                        "company_name".to_string(),
-                        "General Motors".to_string()
-                    )]),
-                }
-            },
-        );
-
-        let content = Content::from("text");
-        assert!(content
-            .exclude_function_calls()
+    fn flatten_into_tool_use() {
+        assert!(Content::from("text")
+            .flatten_into_tool_use()
             .is_err());
 
-        Ok(())
-    }
+        assert!(Content::from(vec![
+            ContentBlock::from("text"),
+            ContentBlock::from(ImageContentSource::default()),
+        ])
+        .flatten_into_tool_use()
+        .is_err());
 
-    #[test]
-    fn test_extract_first_function_calls() {
-        let text = r#"
-To find the current stock price for General Motors, I will:
+        assert!(Content::from(vec![
+            ContentBlock::from("text"),
+            ContentBlock::from("second"),
+        ])
+        .flatten_into_tool_use()
+        .is_err());
 
-<function_calls>
-<invoke>
-<tool_name>get_ticker_symbol</tool_name>
-<parameters>
-<company_name>General Motors</company_name>
-</parameters>
-</invoke>
-</function_calls>
+        assert!(Content::from(vec![])
+            .flatten_into_tool_use()
+            .is_err());
 
-<!-- This is a commented out section, which should not be considered -->
-<!-- <function_calls>example</function_calls> -->
+        assert!(
+            Content::from(ImageContentSource::default())
+                .flatten_into_tool_use()
+                .is_err()
+        );
 
-This is another <function_calls>example</function_calls> for testing."#;
-
-        let extracted_call = extract_first_function_calls(text);
         assert_eq!(
-            extracted_call.unwrap(),
-            "<function_calls>\n<invoke>\n<tool_name>get_ticker_symbol</tool_name>\n<parameters>\n<company_name>General Motors</company_name>\n</parameters>\n</invoke>\n</function_calls>"
+            Content::from(vec![
+                ContentBlock::from(ToolUseContentBlock::new(
+                    "id",
+                    "name",
+                    serde_json::Value::Object(Map::new())
+                )),
+                ContentBlock::from("text"),
+            ])
+            .flatten_into_tool_use()
+            .unwrap(),
+            ToolUseContentBlock::new(
+                "id",
+                "name",
+                serde_json::Value::Object(Map::new())
+            )
         );
     }
 }
