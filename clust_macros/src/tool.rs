@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
 use syn::{AttrStyle, Expr, ItemFn, Meta};
+use valico::json_schema::PrimitiveType;
 
 use crate::parameter_type::ParameterType;
 use crate::return_type::ReturnType;
@@ -39,7 +40,8 @@ struct ToolInformation {
 impl ToolInformation {
     fn build_json_schema(&self) -> serde_json::Value {
         let mut builder = valico::json_schema::Builder::new();
-        builder.object();
+
+        builder.type_(PrimitiveType::Object);
 
         if let Some(description) = &self.description {
             builder.desc(&description.clone());
@@ -50,14 +52,15 @@ impl ToolInformation {
         for parameter in &self.parameters {
             builder.properties(|properties| {
                 properties.insert(&parameter.name, |property| {
-                    if let Some(description) = &parameter.description {
-                        property.desc(&description.clone());
-                    }
                     property.type_(
                         parameter
                             ._type
                             .to_primitive_type(),
                     );
+
+                    if let Some(description) = &parameter.description {
+                        property.desc(&description.clone());
+                    }
 
                     // "items" for array
                     if let ParameterType::Array(item_type) =
@@ -399,9 +402,8 @@ fn quote_call_with_value_async(
 
 fn quote_return_no_value() -> proc_macro2::TokenStream {
     quote! {
-        Ok(clust::messages::ToolResult::success(
+        Ok(clust::messages::ToolResult::success_without_content(
             tool_use.id,
-            None,
         ))
     }
 }

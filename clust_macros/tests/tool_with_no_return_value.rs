@@ -1,4 +1,4 @@
-use clust::messages::{AsyncTool, ToolUse};
+use clust::messages::{Tool, ToolUse};
 
 use clust_macros::clust_tool;
 
@@ -7,8 +7,8 @@ use clust_macros::clust_tool;
 /// ## Arguments
 /// - `arg1` - First argument.
 #[clust_tool]
-async fn test_function(arg1: i32) -> i32 {
-    arg1 + 1
+fn test_function(arg1: i32) {
+
 }
 
 #[test]
@@ -37,8 +37,8 @@ fn test_description() {
     );
 }
 
-#[tokio::test]
-async fn test_call() {
+#[test]
+fn test_call() {
     let tool = ClustTool_test_function {};
 
     let tool_use = ToolUse::new(
@@ -47,9 +47,9 @@ async fn test_call() {
         serde_json::json!({"arg1": 42}),
     );
 
-    let result = tool.call(tool_use).await.unwrap();
+    let result = tool.call(tool_use).unwrap();
 
     assert_eq!(result.tool_use_id, "toolu_XXXX");
     assert_eq!(result.is_error, None);
-    assert_eq!(result.content.unwrap().text, "43");
+    assert_eq!(result.content, None);
 }

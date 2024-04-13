@@ -15,20 +15,36 @@ mod parameter_type;
 /// ## Supported arguments
 /// - None
 ///   - e.g. `fn function() -> T`
-/// - A type or types that implement(s) `std::str::FromStr`.
-///   - e.g.
-///     - `fn function(arg1: u32) -> T`
-///     - `fn function(arg1: DefinedStruct) -> T` where `DefinedStruct` implements `std::str::FromStr`.
+/// - Types that can be represented as JSON object.
+///   - Boolean
+///     - `bool`
+///   - Integer
+///     - `i8`, `i16`, `i32`, `i64`, `i128`
+///     - `u8`, `u16`, `u32`, `u64`, `u128`
+///   - Number
+///     - `f32`
+///     - `f64`
+///   - String
+///     - `String`
+///     - `&str`
+///   - Array
+///     - `Vec<T>` where `T` is supported type.
+///     - `&[T]` where `T` is supported type.
+///     - `&[T; N]` where `T` is supported type and `N` is a constant.
+///   - Option
+///     - `Option<T>` where `T` is supported type.
 ///
 /// ## Supported return values
-/// - A type that implements `std::fmt::Display`.
+/// - None
+///   - e.g. `fn function()`
+/// - A type that can be formatted, i.e. implements `std::fmt::Display`.
 ///   - e.g.
 ///     - `fn function() -> u32`
-///     - `fn function() -> DefinedStruct` where `DefinedStruct` implements `std::fmt::Display`.
-/// - Result<T, E> where T and E implement `std::fmt::Display`.
+///     - `fn function() -> DefinedStruct` (where `DefinedStruct` implements `std::fmt::Display`).
+/// - Result<T, E> where T and E can be formatted, i.e. implement `std::fmt::Display`.
 ///   - e.g.
-///     - `fn function() -> Result<u32, Error>`
-///     - `fn function() -> Result<DefinedStruct, Error>` where `DefinedStruct` and `Error` implement `std::fmt::Display`.
+///     - `fn function() -> Result<u32, SomeError>` (where `SomeError` implements `std::fmt::Display`).
+///     - `fn function() -> Result<DefinedStruct, SomeError>` (where `DefinedStruct` and `SomeError` implement `std::fmt::Display`).
 ///
 /// ## Supported executions
 /// - Synchronous -> implement `clust::messages::Tool`

@@ -134,6 +134,18 @@ impl ToolResult {
         }
     }
 
+    /// Creates a new `ToolResult` as a success without content.
+    pub fn success_without_content<S>(tool_use_id: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            tool_use_id: tool_use_id.into(),
+            content: None,
+            is_error: None,
+        }
+    }
+
     /// Creates a new `ToolResult` as an error.
     pub fn error<S, T>(
         tool_use_id: S,
@@ -146,6 +158,18 @@ impl ToolResult {
         Self {
             tool_use_id: tool_use_id.into(),
             content: content.map(Into::into),
+            is_error: Some(true),
+        }
+    }
+
+    /// Creates a new `ToolResult` as an error without content.
+    pub fn error_without_content<S>(tool_use_id: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            tool_use_id: tool_use_id.into(),
+            content: None,
             is_error: Some(true),
         }
     }
@@ -419,6 +443,12 @@ mod tests {
             tool_result.content,
             Some(TextContentBlock::new("text"))
         );
+        assert_eq!(tool_result.is_error, None);
+
+        let tool_result = ToolResult::success_without_content("id");
+        assert_eq!(tool_result.tool_use_id, "id");
+        assert_eq!(tool_result.content, None);
+        assert_eq!(tool_result.is_error, None);
 
         let tool_result = ToolResult::error(
             "id",
@@ -429,5 +459,11 @@ mod tests {
             tool_result.content,
             Some(TextContentBlock::new("text"))
         );
+        assert_eq!(tool_result.is_error, Some(true));
+
+        let tool_result = ToolResult::error_without_content("id");
+        assert_eq!(tool_result.tool_use_id, "id");
+        assert_eq!(tool_result.content, None);
+        assert_eq!(tool_result.is_error, Some(true));
     }
 }

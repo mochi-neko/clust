@@ -1,24 +1,17 @@
-use std::collections::BTreeMap;
-use std::fmt::Display;
-
-use clust::messages::{
-    FunctionCalls, FunctionResults, Invoke, Tool,
-};
+use clust::messages::{Tool, ToolUse};
 
 use clust_macros::clust_tool;
 
-/// A function with returning result for testing.
+use std::fmt::Display;
+
+/// A function for testing.
 ///
 /// ## Arguments
 /// - `arg1` - First argument.
-///
-/// ## Examples
-/// ```rust
-/// ```
 #[clust_tool]
-fn test_function_with_result(arg1: i32) -> Result<u32, TestError> {
+fn test_function(arg1: i32) -> Result<i32, TestError> {
     if arg1 >= 0 {
-        Ok(arg1 as u32)
+        Ok(arg1 + 1)
     } else {
         Err(TestError {
             message: "arg1 is negative".to_string(),
@@ -26,6 +19,7 @@ fn test_function_with_result(arg1: i32) -> Result<u32, TestError> {
     }
 }
 
+#[derive(Debug)]
 struct TestError {
     message: String,
 }
@@ -41,73 +35,55 @@ impl Display for TestError {
 
 #[test]
 fn test_description() {
-    let tool = ClustTool_test_function_with_result {};
+    let tool = ClustTool_test_function {};
 
     assert_eq!(
-        tool.description().to_string(),
-        r#"
-<tool_description>
-  <tool_name>test_function_with_result</tool_name>
-  <description>A function with returning result for testing.</description>
-  <parameters>
-    <parameter>
-      <name>arg1</name>
-      <type>i32</type>
-      <description>First argument.</description>
-    </parameter>
-  </parameters>
-</tool_description>"#
+        tool.definition().to_string(),
+        r#"{
+  "name": "test_function",
+  "description": "A function for testing.",
+  "input_schema": {
+    "description": "A function for testing.",
+    "properties": {
+      "arg1": {
+        "description": "First argument.",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "arg1"
+    ],
+    "type": "object"
+  }
+}"#
     );
 }
 
 #[test]
 fn test_call() {
-    let tool = ClustTool_test_function_with_result {};
+    let tool = ClustTool_test_function {};
 
-    let function_calls = FunctionCalls {
-        invoke: Invoke {
-            tool_name: String::from("test_function_with_result"),
-            parameters: BTreeMap::from_iter(vec![(
-                "arg1".to_string(),
-                "1".to_string(),
-            )]),
-        },
-    };
+    let tool_use = ToolUse::new(
+        "toolu_XXXX",
+        "test_function",
+        serde_json::json!({"arg1": 42}),
+    );
 
-    let result = tool
-        .call(function_calls)
-        .unwrap();
+    let result = tool.call(tool_use).unwrap();
 
-    if let FunctionResults::Result(result) = result {
-        assert_eq!(
-            result.tool_name,
-            "test_function_with_result"
-        );
-        assert_eq!(result.stdout, "1");
-    } else {
-        panic!("Expected FunctionResults::Result");
-    }
+    assert_eq!(result.tool_use_id, "toolu_XXXX");
+    assert_eq!(result.is_error, None);
+    assert_eq!(result.content.unwrap().text, "43");
 
-    let function_calls = FunctionCalls {
-        invoke: Invoke {
-            tool_name: String::from("test_function_with_result"),
-            parameters: BTreeMap::from_iter(vec![(
-                "arg1".to_string(),
-                "-1".to_string(),
-            )]),
-        },
-    };
+    let tool_use = ToolUse::new(
+        "toolu_XXXX",
+        "test_function",
+        serde_json::json!({"arg1": -3}),
+    );
 
-    let result = tool
-        .call(function_calls)
-        .unwrap();
+    let result = tool.call(tool_use).unwrap();
 
-    if let FunctionResults::Error(error) = result {
-        assert_eq!(
-            error,
-            "arg1 is negative"
-        );
-    } else {
-        panic!("Expected FunctionResults::Error");
-    }
+    assert_eq!(result.tool_use_id, "toolu_XXXX");
+    assert_eq!(result.is_error, Some(true));
+    assert_eq!(result.content.unwrap().text, "arg1 is negative");
 }

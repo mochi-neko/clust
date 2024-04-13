@@ -1,4 +1,4 @@
-use clust::messages::{TextContentBlock, Tool, ToolResult, ToolUse};
+use clust::messages::{Tool, ToolUse};
 
 use clust_macros::clust_tool;
 
