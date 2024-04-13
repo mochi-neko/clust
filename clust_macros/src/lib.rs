@@ -3,8 +3,9 @@
 use crate::tool::impl_tool;
 use proc_macro::TokenStream;
 
-mod check_result;
+mod return_type;
 mod tool;
+mod parameter_type;
 
 /// A procedural macro that generates a `clust::messages::Tool` or `clust::messages::AsyncTool`
 /// implementation for the annotated function with documentation.
@@ -56,9 +57,7 @@ mod tool;
 ///
 /// ```rust
 /// use clust_macros::clust_tool;
-/// use std::collections::BTreeMap;
-/// use std::iter::FromIterator;
-/// use clust::messages::{FunctionCalls, Invoke, Tool};
+/// use clust::messages::{ToolUse, Tool};
 ///
 /// /// Increments the argument by 1.
 /// ///
@@ -73,17 +72,15 @@ mod tool;
 ///
 /// let description = tool.description();
 ///
-/// let function_calls = FunctionCalls {
-///     invoke: Invoke {
-///         tool_name: String::from("incrementer"),
-///         parameters: BTreeMap::from_iter(vec![(
-///             "value".to_string(),
-///             "42".to_string(),
-///         )]),
-///     },
-/// };
+/// let tool_use = ToolUse::new(
+///     "toolu_XXXX",
+///     "incrementer",
+///     serde_json::json!({
+///         "value": 42
+///     }),
+/// );
 ///
-/// let result = tool.call(function_calls).unwrap();
+/// let result = tool.call(tool_use).unwrap();
 /// ```
 ///
 /// Generated XML tool description from above implementation is as follows:

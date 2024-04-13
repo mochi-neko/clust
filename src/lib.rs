@@ -6,7 +6,7 @@
 //!     - [x] [Streaming Messages](https://docs.anthropic.com/claude/reference/messages-streaming)
 //!
 //! ## Feature flags
-//! - `macros`: Enable the [`attributes::clust_tool`] attribute macro for generating [`messages::Tool`]
+//! - `macros`: Enable the [`attributes::clust_tool`] attribute macro for generating [`messages::ToolDefinition`]
 //!   or [`messages::AsyncTool`] from a Rust function.
 //!
 //! ## Usages

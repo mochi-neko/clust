@@ -1,56 +1,86 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span};
 use std::collections::BTreeMap;
 
-use crate::check_result::{get_return_type, ReturnType};
+use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
 use syn::{AttrStyle, Expr, ItemFn, Meta};
 
+use crate::parameter_type::ParameterType;
+use crate::return_type::ReturnType;
+
 #[derive(Debug, Clone)]
 struct DocComments {
-    description: String,
+    description: Option<String>,
     parameters: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
-struct ParameterType {
+struct ParameterWithNoDescription {
     name: String,
-    _type: String,
+    _type: ParameterType,
 }
 
 #[derive(Debug, Clone)]
 struct Parameter {
-    pub name: String,
-    pub _type: String,
-    pub description: String,
-}
-
-impl ToTokens for Parameter {
-    fn to_tokens(
-        &self,
-        tokens: &mut proc_macro2::TokenStream,
-    ) {
-        let name = &self.name;
-        let _type = &self._type;
-        let description = &self.description;
-
-        tokens.extend(quote! {
-            clust::messages::Parameter {
-                name: format!(r#"{}"#, #name),
-                _type: format!(r#"{}"#, #_type),
-                description: format!(r#"{}"#, #description),
-            },
-        });
-    }
+    name: String,
+    _type: ParameterType,
+    description: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 struct ToolInformation {
     name: String,
-    description: String,
+    description: Option<String>,
     parameters: Vec<Parameter>,
+}
+
+impl ToolInformation {
+    fn build_json_schema(&self) -> serde_json::Value {
+        let mut builder = valico::json_schema::Builder::new();
+        builder.object();
+
+        if let Some(description) = &self.description {
+            builder.desc(&description.clone());
+        }
+
+        let mut required = Vec::new();
+
+        for parameter in &self.parameters {
+            builder.properties(|properties| {
+                properties.insert(&parameter.name, |property| {
+                    if let Some(description) = &parameter.description {
+                        property.desc(&description.clone());
+                    }
+                    property.type_(
+                        parameter
+                            ._type
+                            .to_primitive_type(),
+                    );
+
+                    // "items" for array
+                    if let ParameterType::Array(item_type) =
+                        parameter._type.clone()
+                    {
+                        property.items_schema(|items| {
+                            items.type_(item_type.to_primitive_type());
+                        });
+                    }
+                });
+            });
+
+            if let ParameterType::Option(_) = parameter._type {
+                // Do nothing
+            } else {
+                required.push(parameter.name.clone());
+            }
+        }
+
+        builder.required(required);
+
+        builder.into_json()
+    }
 }
 
 fn get_doc_comments(func: &ItemFn) -> Vec<String> {
@@ -163,27 +193,33 @@ fn parse_doc_comments(docs: Vec<String>) -> DocComments {
         }
     }
 
+    let description = if description.is_empty() {
+        None
+    } else {
+        Some(description)
+    };
+
     DocComments {
-        description: format!(r#"{}"#, description),
+        description,
         parameters,
     }
 }
 
-fn get_parameter_types(func: &ItemFn) -> Vec<ParameterType> {
+fn get_parameter_types(func: &ItemFn) -> Vec<ParameterWithNoDescription> {
     func.sig.inputs.iter().map(|input| {
         match input {
             | syn::FnArg::Typed(pat) => {
                 match pat.pat.as_ref() {
                     | syn::Pat::Ident(ident) => {
-                        ParameterType {
+                        ParameterWithNoDescription {
                             name: ident.ident.to_string(),
-                            _type: pat.ty.to_token_stream().to_string(),
+                            _type: ParameterType::from_syn_type(&pat.ty),
                         }
                     },
                     | _ => panic!("Tool trait requires named fields"),
                 }
             },
-            | _ => panic!("Tool trait can only be derived for functions with named fields, not for methods."),
+            | _ => panic!("Tool trait can only be derived for functions with named fields."),
         }
     }).collect()
 }
@@ -193,25 +229,28 @@ fn get_tool_information(func: &ItemFn) -> ToolInformation {
     let doc_comments = parse_doc_comments(doc_comments);
     let parameter_types = get_parameter_types(&func);
 
-    let parameters = doc_comments
-        .parameters
+    let parameters = parameter_types
         .iter()
-        .map(
-            |(parameter_name, parameter_description)| {
-                let parameter_type = parameter_types
-                    .iter()
-                    .find(|parameter_type| {
-                        parameter_type.name == parameter_name.as_str()
-                    })
-                    .unwrap();
-
+        .map(|parameter| {
+            // Add parameter description if it has been found in doc comments
+            if let Some((_, parameter_description)) = doc_comments
+                .parameters
+                .iter()
+                .find(|(name, _)| *name == &parameter.name)
+            {
                 Parameter {
-                    name: parameter_name.clone(),
-                    _type: parameter_type._type.clone(),
-                    description: parameter_description.clone(),
+                    name: parameter.name.clone(),
+                    _type: parameter._type.clone(),
+                    description: Some(parameter_description.clone()),
                 }
-            },
-        )
+            } else {
+                Parameter {
+                    name: parameter.name.clone(),
+                    _type: parameter._type.clone(),
+                    description: None,
+                }
+            }
+        })
         .collect();
 
     ToolInformation {
@@ -221,44 +260,31 @@ fn get_tool_information(func: &ItemFn) -> ToolInformation {
     }
 }
 
-fn quote_parameter_descriptions(
-    info: &ToolInformation
-) -> Vec<proc_macro2::TokenStream> {
-    info.parameters
-        .iter()
-        .map(|parameter| {
-            let name = parameter.name.clone();
-            let _type = parameter._type.clone();
-            let description = parameter.description.clone();
-
-            quote! {
-                clust::messages::Parameter {
-                    name: format!(r#"{}"#, #name),
-                    _type: format!(r#"{}"#, #_type),
-                    description: format!(r#"{}"#, #description),
-                }
-            }
-        })
-        .collect()
-}
-
-fn quote_description(info: &ToolInformation) -> proc_macro2::TokenStream {
+fn quote_definition(info: &ToolInformation) -> proc_macro2::TokenStream {
     let name = info.name.clone();
     let description = info.description.clone();
-    let parameters = quote_parameter_descriptions(info);
+    let input_schema = info
+        .build_json_schema()
+        .to_string();
 
-    quote! {
-        fn description(&self) -> clust::messages::ToolDescription {
-            clust::messages::ToolDescription {
-                tool_name: format!(r#"{}"#, #name),
-                description: format!(r#"{}"#, #description),
-                parameters: clust::messages::Parameters {
-                    inner: vec![
-                        #(
-                            #parameters
-                        ),*
-                    ],
-                },
+    if let Some(description) = description {
+        quote! {
+            fn definition(&self) -> clust::messages::ToolDefinition {
+                clust::messages::ToolDefinition::new(
+                    #name,
+                    Some(#description),
+                    serde_json::from_str(&#input_schema).expect("Failed to parse JSON schema of tool definition"),
+                )
+            }
+        }
+    } else {
+        quote! {
+            fn definition(&self) -> clust::messages::ToolDefinition {
+                clust::messages::ToolDefinition::new(
+                    #name,
+                    None,
+                    serde_json::json!(#input_schema),
+                )
             }
         }
     }
@@ -271,42 +297,137 @@ fn quote_invoke_parameters(
         .parameters
         .iter()
         .map(|parameter| parameter.name.clone())
-        .map(|parameter| {
+        .map(|name| {
             quote! {
-                 function_calls.invoke.parameters.get(#parameter)
-                        .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#parameter.to_string()))?
-                        .parse()
-                        .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#parameter.to_string()))?
+                tool_use.input.get(#name)
+                    .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#name.to_string()))?
+                    .to_string()
+                    .parse()
+                    .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#name.to_string()))?
             }
         })
         .collect()
 }
 
-fn quote_result(name: String) -> proc_macro2::TokenStream {
+fn quote_tool_call() -> proc_macro2::TokenStream {
     quote! {
-        Ok(clust::messages::FunctionResults::Result(
-            clust::messages::FunctionResult {
-                tool_name: #name.to_string(),
-                stdout: format!("{}", result),
-            }
+        fn call(&self, tool_use: clust::messages::ToolUse)
+        -> std::result::Result<clust::messages::ToolResult, clust::messages::ToolCallError>
+    }
+}
+
+fn quote_async_tool_call() -> proc_macro2::TokenStream {
+    quote! {
+        async fn call(&self, tool_use: clust::messages::ToolUse)
+        -> std::result::Result<clust::messages::ToolResult, clust::messages::ToolCallError>
+    }
+}
+
+fn quote_check_name(info: &ToolInformation) -> proc_macro2::TokenStream {
+    let name = info.name.clone();
+
+    quote! {
+        if tool_use.name != #name {
+            return Err(clust::messages::ToolCallError::ToolNameMismatch);
+        }
+    }
+}
+
+fn quote_call_with_no_value(
+    func: &ItemFn,
+    info: &ToolInformation,
+) -> proc_macro2::TokenStream {
+    let function = func.sig.ident.clone();
+    let impl_invoke_parameters = quote_invoke_parameters(info);
+
+    quote! {
+        #function(
+            #(
+                #impl_invoke_parameters
+            ),*
+        );
+    }
+}
+
+fn quote_call_with_value(
+    func: &ItemFn,
+    info: &ToolInformation,
+) -> proc_macro2::TokenStream {
+    let function = func.sig.ident.clone();
+    let impl_invoke_parameters = quote_invoke_parameters(info);
+
+    quote! {
+        let result = #function(
+            #(
+                #impl_invoke_parameters
+            ),*
+        );
+    }
+}
+
+fn quote_call_with_no_value_async(
+    func: &ItemFn,
+    info: &ToolInformation,
+) -> proc_macro2::TokenStream {
+    let function = func.sig.ident.clone();
+    let impl_invoke_parameters = quote_invoke_parameters(info);
+
+    quote! {
+        #function(
+            #(
+                #impl_invoke_parameters
+            ),*
+        ).await;
+    }
+}
+
+fn quote_call_with_value_async(
+    func: &ItemFn,
+    info: &ToolInformation,
+) -> proc_macro2::TokenStream {
+    let function = func.sig.ident.clone();
+    let impl_invoke_parameters = quote_invoke_parameters(info);
+
+    quote! {
+        let result = #function(
+            #(
+                #impl_invoke_parameters
+            ),*
+        ).await;
+    }
+}
+
+fn quote_return_no_value() -> proc_macro2::TokenStream {
+    quote! {
+        Ok(clust::messages::ToolResult::success(
+            tool_use.id,
+            None,
         ))
     }
 }
 
-fn quote_result_with_match(name: String) -> proc_macro2::TokenStream {
+fn quote_return_value() -> proc_macro2::TokenStream {
+    quote! {
+        Ok(clust::messages::ToolResult::success(
+            tool_use.id,
+            Some(format!("{}", result)),
+        ))
+    }
+}
+
+fn quote_return_value_with_result() -> proc_macro2::TokenStream {
     quote! {
         match result {
             | Ok(value) => {
-                Ok(clust::messages::FunctionResults::Result(
-                    clust::messages::FunctionResult {
-                        tool_name: #name.to_string(),
-                        stdout: format!("{}", value),
-                    }
+                Ok(clust::messages::ToolResult::success(
+                    tool_use.id,
+                    Some(format!("{}", value)),
                 ))
             },
             | Err(error) => {
-                Ok(clust::messages::FunctionResults::Error(
-                    format!("{}", error)
+                Ok(clust::messages::ToolResult::error(
+                    tool_use.id,
+                    Some(format!("{}", error)),
                 ))
             },
         }
@@ -316,135 +437,80 @@ fn quote_result_with_match(name: String) -> proc_macro2::TokenStream {
 fn quote_call(
     func: &ItemFn,
     info: &ToolInformation,
+    return_type: ReturnType,
+    is_async: bool,
 ) -> proc_macro2::TokenStream {
-    let name = info.name.clone();
-    let ident = func.sig.ident.clone();
-    let parameters = quote_invoke_parameters(info);
-    let quote_result = quote_result(name.clone());
+    let impl_tool_call = if !is_async {
+        quote_tool_call()
+    } else {
+        quote_async_tool_call()
+    };
+    let impl_check_name = quote_check_name(info);
+    let impl_call = match return_type {
+        | ReturnType::None => {
+            if !is_async {
+                quote_call_with_no_value(func, info)
+            } else {
+                quote_call_with_no_value_async(func, info)
+            }
+        },
+        | ReturnType::Value | ReturnType::Result => {
+            if !is_async {
+                quote_call_with_value(func, info)
+            } else {
+                quote_call_with_value_async(func, info)
+            }
+        },
+    };
+    let impl_return_value = match return_type {
+        | ReturnType::None => quote_return_no_value(),
+        | ReturnType::Value => quote_return_value(),
+        | ReturnType::Result => quote_return_value_with_result(),
+    };
 
     quote! {
-        fn call(&self, function_calls: clust::messages::FunctionCalls)
-        -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
-            if function_calls.invoke.tool_name != #name {
-                return Err(clust::messages::ToolCallError::ToolNameMismatch);
-            }
-
-            let result = #ident(
-                #(
-                    #parameters
-                ),*
-            );
-
-            #quote_result
+        #impl_tool_call {
+            #impl_check_name
+            #impl_call
+            #impl_return_value
         }
     }
 }
 
-fn quote_call_with_result(
-    func: &ItemFn,
-    info: &ToolInformation,
-) -> proc_macro2::TokenStream {
-    let name = info.name.clone();
-    let ident = func.sig.ident.clone();
-    let parameters = quote_invoke_parameters(info);
-    let quote_result = quote_result_with_match(name.clone());
+fn quote_impl_tool(struct_name: &Ident) -> proc_macro2::TokenStream {
+    let struct_name = struct_name.clone();
 
     quote! {
-        fn call(&self, function_calls: clust::messages::FunctionCalls)
-        -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
-            if function_calls.invoke.tool_name != #name {
-                return Err(clust::messages::ToolCallError::ToolNameMismatch);
-            }
-
-            let result = #ident(
-                #(
-                    #parameters
-                ),*
-            );
-
-            #quote_result
-        }
+        impl clust::messages::Tool for #struct_name
     }
 }
 
-fn quote_call_async(
-    func: &ItemFn,
-    info: &ToolInformation,
-) -> proc_macro2::TokenStream {
-    let name = info.name.clone();
-    let ident = func.sig.ident.clone();
-    let parameters = quote_invoke_parameters(info);
-    let quote_result = quote_result(name.clone());
+fn quote_impl_async_tool(struct_name: &Ident) -> proc_macro2::TokenStream {
+    let struct_name = struct_name.clone();
 
     quote! {
-        async fn call(&self, function_calls: clust::messages::FunctionCalls)
-        -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
-            if function_calls.invoke.tool_name != #name {
-                return Err(clust::messages::ToolCallError::ToolNameMismatch);
-            }
-
-            let result = #ident(
-                #(
-                    #parameters
-                ),*
-            ).await;
-
-            #quote_result
-        }
-    }
-}
-
-fn quote_call_async_with_result(
-    func: &ItemFn,
-    info: &ToolInformation,
-) -> proc_macro2::TokenStream {
-    let name = info.name.clone();
-    let ident = func.sig.ident.clone();
-    let parameters = quote_invoke_parameters(info);
-    let quote_result = quote_result_with_match(name.clone());
-
-    quote! {
-        async fn call(&self, function_calls: clust::messages::FunctionCalls)
-        -> std::result::Result<clust::messages::FunctionResults, clust::messages::ToolCallError> {
-            if function_calls.invoke.tool_name != #name {
-                return Err(clust::messages::ToolCallError::ToolNameMismatch);
-            }
-
-            let result = #ident(
-                #(
-                    #parameters
-                ),*
-            ).await;
-
-            #quote_result
-        }
+        impl clust::messages::AsyncTool for #struct_name
     }
 }
 
 fn impl_tool_for_function(
     func: &ItemFn,
     info: ToolInformation,
+    return_type: ReturnType,
+    is_async: bool,
 ) -> proc_macro2::TokenStream {
-    let impl_description = quote_description(&info);
-
-    let impl_call = match func.sig.output.clone() {
-        | syn::ReturnType::Default => {
-            panic!("Function must have a displayable return type")
-        },
-        | syn::ReturnType::Type(_, _type) => {
-            let return_type = get_return_type(&_type);
-
-            match return_type {
-                | ReturnType::Value => quote_call(func, &info),
-                | ReturnType::Result => quote_call_with_result(func, &info),
-            }
-        },
-    };
-
     let struct_name = Ident::new(
         &format!("ClustTool_{}", info.name),
         Span::call_site(),
     );
+
+    let impl_impl_tool = if !is_async {
+        quote_impl_tool(&struct_name)
+    } else {
+        quote_impl_async_tool(&struct_name)
+    };
+    let impl_definition = quote_definition(&info);
+    let impl_call = quote_call(func, &info, return_type, is_async);
 
     quote! {
         // Original function
@@ -453,51 +519,9 @@ fn impl_tool_for_function(
         // Generated tool struct
         pub struct #struct_name;
 
-        // Implement Tool trait for generated tool struct
-        impl clust::messages::Tool for #struct_name {
-            #impl_description
-            #impl_call
-        }
-    }
-}
-
-fn impl_tool_for_async_function(
-    func: &ItemFn,
-    info: ToolInformation,
-) -> proc_macro2::TokenStream {
-    let impl_description = quote_description(&info);
-
-    let impl_call = match func.sig.output.clone() {
-        | syn::ReturnType::Default => {
-            panic!("Function must have a displayable return type")
-        },
-        | syn::ReturnType::Type(_, _type) => {
-            let return_type = get_return_type(&_type);
-
-            match return_type {
-                | ReturnType::Value => quote_call_async(func, &info),
-                | ReturnType::Result => {
-                    quote_call_async_with_result(func, &info)
-                },
-            }
-        },
-    };
-
-    let struct_name = Ident::new(
-        &format!("ClustTool_{}", info.name),
-        Span::call_site(),
-    );
-
-    quote! {
-        // Original function
-        #func
-
-        // Generated tool struct
-        pub struct #struct_name;
-
-        // Implement Tool trait for generated tool struct
-        impl clust::messages::AsyncTool for #struct_name {
-            #impl_description
+        // Implement Tool or AsyncTool trait for generated tool struct
+        #impl_impl_tool {
+            #impl_definition
             #impl_call
         }
     }
@@ -505,12 +529,16 @@ fn impl_tool_for_async_function(
 
 pub(crate) fn impl_tool(func: &ItemFn) -> TokenStream {
     let tool_information = get_tool_information(func);
+    let is_async = func.sig.asyncness.is_some();
+    let return_type = ReturnType::from_syn(&func.sig.output);
 
-    if func.sig.asyncness.is_some() {
-        impl_tool_for_async_function(func, tool_information).into()
-    } else {
-        impl_tool_for_function(func, tool_information).into()
-    }
+    impl_tool_for_function(
+        func,
+        tool_information,
+        return_type,
+        is_async,
+    )
+    .into()
 }
 
 #[cfg(test)]
@@ -596,7 +624,7 @@ mod test {
 
         assert_eq!(
             doc_comments.description,
-            "A function for testing."
+            Some("A function for testing.".to_string())
         );
         assert_eq!(doc_comments.parameters.len(), 1);
         assert_eq!(
@@ -627,7 +655,7 @@ mod test {
 
         assert_eq!(
             doc_comments.description,
-            "A function for testing."
+            Some("A function for testing.".to_string())
         );
         assert_eq!(doc_comments.parameters.len(), 2);
         assert_eq!(
@@ -664,7 +692,7 @@ mod test {
         assert_eq!(tool_information.name, "test_function");
         assert_eq!(
             tool_information.description,
-            "A function for testing."
+            Some("A function for testing.".to_string())
         );
         assert_eq!(
             tool_information
@@ -686,7 +714,7 @@ mod test {
                 .get(0)
                 .unwrap()
                 ._type,
-            "i32"
+            ParameterType::Integer,
         );
         assert_eq!(
             tool_information
@@ -694,7 +722,7 @@ mod test {
                 .get(0)
                 .unwrap()
                 .description,
-            "First argument."
+            Some("First argument.".to_string())
         );
     }
 
@@ -717,7 +745,7 @@ mod test {
         assert_eq!(tool_information.name, "test_function");
         assert_eq!(
             tool_information.description,
-            "A function for testing."
+            Some("A function for testing.".to_string())
         );
         assert_eq!(
             tool_information
@@ -739,7 +767,7 @@ mod test {
                 .get(0)
                 .unwrap()
                 ._type,
-            "i32"
+            ParameterType::Integer,
         );
         assert_eq!(
             tool_information
@@ -747,7 +775,7 @@ mod test {
                 .get(0)
                 .unwrap()
                 .description,
-            "First argument."
+            Some("First argument.".to_string())
         );
         assert_eq!(
             tool_information
@@ -763,7 +791,7 @@ mod test {
                 .get(1)
                 .unwrap()
                 ._type,
-            "u32"
+            ParameterType::Integer,
         );
         assert_eq!(
             tool_information
@@ -771,7 +799,31 @@ mod test {
                 .get(1)
                 .unwrap()
                 .description,
-            "Second argument."
+            Some("Second argument.".to_string())
+        );
+    }
+
+    #[test]
+    fn test_is_optional_type() {
+        let input = quote! {
+            fn test_function(arg1: Option<i32>, arg2: u32) -> i32 {
+                arg1.unwrap()
+            }
+        };
+
+        let item_func = syn::parse_str::<ItemFn>(&input.to_string()).unwrap();
+        let parameter_types = get_parameter_types(&item_func);
+
+        assert_eq!(parameter_types.len(), 2);
+        assert_eq!(parameter_types[0].name, "arg1");
+        assert_eq!(
+            parameter_types[0]._type,
+            ParameterType::Option(Box::new(ParameterType::Integer)),
+        );
+        assert_eq!(parameter_types[1].name, "arg2");
+        assert_eq!(
+            parameter_types[1]._type,
+            ParameterType::Integer
         );
     }
 }

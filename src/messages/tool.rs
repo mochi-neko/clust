@@ -1,11 +1,34 @@
 use crate::macros::impl_display_for_serialize;
-use crate::messages::TextContentBlock;
+use crate::messages::{TextContentBlock, ToolCallError};
+use std::future::Future;
 
 /// A tool that can be used by assistant.
+pub trait Tool {
+    /// Gets the definition of the tool.
+    fn definition(&self) -> ToolDefinition;
+    /// Calls the tool.
+    fn call(
+        &self,
+        tool_use: ToolUse,
+    ) -> Result<ToolResult, ToolCallError>;
+}
+
+/// An asynchronous tool that can be used by assistant.
+pub trait AsyncTool {
+    /// Gets the definition of the tool.
+    fn definition(&self) -> ToolDefinition;
+    /// Calls the tool asynchronously.
+    fn call(
+        &self,
+        tool_use: ToolUse,
+    ) -> impl Future<Output = Result<ToolResult, ToolCallError>> + Send;
+}
+
+/// A tool definition that can be used by assistant.
 #[derive(
     Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
 )]
-pub struct Tool {
+pub struct ToolDefinition {
     /// Name of the tool.
     pub name: String,
     /// Optional, but strongly-recommended description of the tool.
@@ -14,7 +37,26 @@ pub struct Tool {
     pub input_schema: serde_json::Value,
 }
 
-impl_display_for_serialize!(Tool);
+impl_display_for_serialize!(ToolDefinition);
+
+impl ToolDefinition {
+    /// Creates a new `ToolDefinition`.
+    pub fn new<S, T>(
+        name: S,
+        description: Option<T>,
+        input_schema: serde_json::Value,
+    ) -> Self
+    where
+        S: Into<String>,
+        T: Into<String>,
+    {
+        Self {
+            name: name.into(),
+            description: description.map(Into::into),
+            input_schema,
+        }
+    }
+}
 
 /// A tool use request.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -68,13 +110,16 @@ pub struct ToolResult {
     /// The result of the tool, as a string (e.g. "content": "65 degrees") or list of nested content blocks (e.g. "content": [{"type": "text", "text": "65 degrees"}]\). During beta, only the text type content blocks are supported for tool_result content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<TextContentBlock>,
+    /// Set to true if the tool execution resulted in an error.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
 }
 
 impl_display_for_serialize!(ToolResult);
 
 impl ToolResult {
-    /// Creates a new `ToolResult`.
-    pub fn new<S, T>(
+    /// Creates a new `ToolResult` as a success.
+    pub fn success<S, T>(
         tool_use_id: S,
         content: Option<T>,
     ) -> Self
@@ -85,6 +130,23 @@ impl ToolResult {
         Self {
             tool_use_id: tool_use_id.into(),
             content: content.map(Into::into),
+            is_error: None,
+        }
+    }
+
+    /// Creates a new `ToolResult` as an error.
+    pub fn error<S, T>(
+        tool_use_id: S,
+        content: Option<T>,
+    ) -> Self
+    where
+        S: Into<String>,
+        T: Into<TextContentBlock>,
+    {
+        Self {
+            tool_use_id: tool_use_id.into(),
+            content: content.map(Into::into),
+            is_error: Some(true),
         }
     }
 }
@@ -94,8 +156,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_tool() {
-        let tool = Tool::default();
+    fn default_tool_definition() {
+        let tool = ToolDefinition::default();
         assert_eq!(tool.name, String::default());
         assert_eq!(tool.description, None);
         assert_eq!(
@@ -105,41 +167,83 @@ mod tests {
     }
 
     #[test]
-    fn display_tool() {
-        let tool = Tool {
+    fn display_tool_definition() {
+        let tool = ToolDefinition {
             name: "tool".to_string(),
             description: Some("tool description".to_string()),
-            input_schema: serde_json::json!({}),
+            input_schema: serde_json::json!({
+                "properties": {
+                    "arg1": {
+                        "description": "First argument.",
+                        "type": "integer",
+                    },
+                },
+                "required": ["arg1"],
+                "type": "object",
+            }),
         };
         assert_eq!(
             tool.to_string(),
-            "{\n  \"name\": \"tool\",\n  \"description\": \"tool description\",\n  \"input_schema\": {}\n}"
+            r#"{
+  "name": "tool",
+  "description": "tool description",
+  "input_schema": {
+    "properties": {
+      "arg1": {
+        "description": "First argument.",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "arg1"
+    ],
+    "type": "object"
+  }
+}"#
         );
     }
 
     #[test]
-    fn serialize_tool() {
-        let tool = Tool {
+    fn serialize_tool_definition() {
+        let tool = ToolDefinition {
             name: "tool".to_string(),
             description: Some("tool description".to_string()),
-            input_schema: serde_json::json!({}),
+            input_schema: serde_json::json!({
+                "properties": {
+                    "arg1": {
+                        "description": "First argument.",
+                        "type": "integer",
+                    },
+                },
+                "required": ["arg1"],
+                "type": "object",
+            }),
         };
         assert_eq!(
             serde_json::to_string(&tool).unwrap(),
-            r#"{"name":"tool","description":"tool description","input_schema":{}}"#
+            r#"{"name":"tool","description":"tool description","input_schema":{"properties":{"arg1":{"description":"First argument.","type":"integer"}},"required":["arg1"],"type":"object"}}"#,
         );
     }
 
     #[test]
-    fn deserialize_tool() {
-        let tool = Tool {
+    fn deserialize_tool_definition() {
+        let tool = ToolDefinition {
             name: "tool".to_string(),
             description: Some("tool description".to_string()),
-            input_schema: serde_json::json!({}),
+            input_schema: serde_json::json!({
+                "properties": {
+                    "arg1": {
+                        "description": "First argument.",
+                        "type": "integer",
+                    },
+                },
+                "required": ["arg1"],
+                "type": "object",
+            }),
         };
         assert_eq!(
-            serde_json::from_str::<Tool>(
-                r#"{"name":"tool","description":"tool description","input_schema":{}}"#
+            serde_json::from_str::<ToolDefinition>(
+                r#"{"name":"tool","description":"tool description","input_schema":{"properties":{"arg1":{"description":"First argument.","type":"integer"}},"required":["arg1"],"type":"object"}}"#
             )
             .unwrap(),
             tool
@@ -159,11 +263,19 @@ mod tests {
         let tool_use = ToolUse {
             id: "id".to_string(),
             name: "name".to_string(),
-            input: serde_json::json!({}),
+            input: serde_json::json!({
+                "arg1": 42,
+            }),
         };
         assert_eq!(
             tool_use.to_string(),
-            "{\n  \"id\": \"id\",\n  \"name\": \"name\",\n  \"input\": {}\n}"
+            r#"{
+  "id": "id",
+  "name": "name",
+  "input": {
+    "arg1": 42
+  }
+}"#
         );
     }
 
@@ -172,11 +284,11 @@ mod tests {
         let tool_use = ToolUse {
             id: "id".to_string(),
             name: "name".to_string(),
-            input: serde_json::json!({}),
+            input: serde_json::json!({"arg1": 42}),
         };
         assert_eq!(
             serde_json::to_string(&tool_use).unwrap(),
-            r#"{"id":"id","name":"name","input":{}}"#
+            r#"{"id":"id","name":"name","input":{"arg1":42}}"#
         );
     }
 
@@ -185,11 +297,11 @@ mod tests {
         let tool_use = ToolUse {
             id: "id".to_string(),
             name: "name".to_string(),
-            input: serde_json::json!({}),
+            input: serde_json::json!({"arg1": 42}),
         };
         assert_eq!(
             serde_json::from_str::<ToolUse>(
-                r#"{"id":"id","name":"name","input":{}}"#
+                r#"{"id":"id","name":"name","input":{"arg1":42}}"#
             )
             .unwrap(),
             tool_use
@@ -198,10 +310,17 @@ mod tests {
 
     #[test]
     fn new_tool_use() {
-        let tool_use = ToolUse::new("id", "name", serde_json::json!({}));
+        let tool_use = ToolUse::new(
+            "id",
+            "name",
+            serde_json::json!({"arg1": 42}),
+        );
         assert_eq!(tool_use.id, "id");
         assert_eq!(tool_use.name, "name");
-        assert_eq!(tool_use.input, serde_json::json!({}));
+        assert_eq!(
+            tool_use.input,
+            serde_json::json!({"arg1": 42})
+        );
     }
 
     #[test]
@@ -219,10 +338,21 @@ mod tests {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
             content: Some(TextContentBlock::new("text")),
+            is_error: None,
         };
         assert_eq!(
             tool_result.to_string(),
             "{\n  \"tool_use_id\": \"id\",\n  \"content\": {\n    \"type\": \"text\",\n    \"text\": \"text\"\n  }\n}"
+        );
+
+        let tool_result = ToolResult {
+            tool_use_id: "id".to_string(),
+            content: Some(TextContentBlock::new("text")),
+            is_error: Some(true),
+        };
+        assert_eq!(
+            tool_result.to_string(),
+            "{\n  \"tool_use_id\": \"id\",\n  \"content\": {\n    \"type\": \"text\",\n    \"text\": \"text\"\n  },\n  \"is_error\": true\n}"
         );
     }
 
@@ -231,10 +361,21 @@ mod tests {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
             content: Some(TextContentBlock::new("text")),
+            is_error: None,
         };
         assert_eq!(
             serde_json::to_string(&tool_result).unwrap(),
             r#"{"tool_use_id":"id","content":{"type":"text","text":"text"}}"#
+        );
+
+        let tool_result = ToolResult {
+            tool_use_id: "id".to_string(),
+            content: Some(TextContentBlock::new("text")),
+            is_error: Some(true),
+        };
+        assert_eq!(
+            serde_json::to_string(&tool_result).unwrap(),
+            r#"{"tool_use_id":"id","content":{"type":"text","text":"text"},"is_error":true}"#
         );
     }
 
@@ -243,6 +384,7 @@ mod tests {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
             content: Some(TextContentBlock::new("text")),
+            is_error: None,
         };
         assert_eq!(
             serde_json::from_str::<ToolResult>(
@@ -251,11 +393,34 @@ mod tests {
             .unwrap(),
             tool_result
         );
+
+        let tool_result = ToolResult {
+            tool_use_id: "id".to_string(),
+            content: Some(TextContentBlock::new("text")),
+            is_error: Some(true),
+        };
+        assert_eq!(
+            serde_json::from_str::<ToolResult>(
+                r#"{"tool_use_id":"id","content":{"type":"text","text":"text"},"is_error":true}"#
+            )
+            .unwrap(),
+            tool_result
+        );
     }
 
     #[test]
     fn new_tool_result() {
-        let tool_result = ToolResult::new(
+        let tool_result = ToolResult::success(
+            "id",
+            Some(TextContentBlock::new("text")),
+        );
+        assert_eq!(tool_result.tool_use_id, "id");
+        assert_eq!(
+            tool_result.content,
+            Some(TextContentBlock::new("text"))
+        );
+
+        let tool_result = ToolResult::error(
             "id",
             Some(TextContentBlock::new("text")),
         );

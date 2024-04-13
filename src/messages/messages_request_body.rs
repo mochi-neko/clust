@@ -1,7 +1,7 @@
 use crate::macros::impl_display_for_serialize;
 use crate::messages::{
     ClaudeModel, MaxTokens, Message, Metadata, StopSequence, StreamOption,
-    SystemPrompt, Temperature, Tool, TopK, TopP,
+    SystemPrompt, Temperature, ToolDefinition, TopK, TopP,
 };
 use crate::ValidationError;
 
@@ -67,7 +67,7 @@ pub struct MessagesRequestBody {
     /// - description: Optional, but strongly-recommended description of the tool.
     /// - input_schema: JSON schema for the tool input shape that the model will produce in tool_use output content blocks.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tools: Option<Vec<Tool>>,
+    pub tools: Option<Vec<ToolDefinition>>,
     /// Use nucleus sampling.
     ///
     /// In nucleus sampling, we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. You should either alter temperature or top_p, but not both.
@@ -220,7 +220,7 @@ impl MessagesRequestBuilder {
     /// Sets the tools.
     pub fn tools(
         mut self,
-        tools: Vec<Tool>,
+        tools: Vec<ToolDefinition>,
     ) -> Self {
         self.request_body.tools = Some(tools);
         self
@@ -400,7 +400,7 @@ mod tests {
                 )])
                 .stream(StreamOption::ReturnOnce)
                 .temperature(Temperature::new(0.5).unwrap())
-                .tools(vec![Tool {
+                .tools(vec![ToolDefinition {
                     name: "tool".into(),
                     description: Some("tool description".into()),
                     input_schema: serde_json::Value::Null,
@@ -444,7 +444,7 @@ mod tests {
         );
         assert_eq!(
             messages_request_body.tools,
-            Some(vec![Tool {
+            Some(vec![ToolDefinition {
                 name: "tool".into(),
                 description: Some("tool description".into()),
                 input_schema: serde_json::Value::Null,
@@ -478,7 +478,7 @@ mod tests {
             )])
             .stream(StreamOption::ReturnOnce)
             .temperature(Temperature::new(0.5).unwrap())
-            .tools(vec![Tool {
+            .tools(vec![ToolDefinition {
                 name: "tool".into(),
                 description: Some("tool description".into()),
                 input_schema: serde_json::Value::Null,
@@ -522,7 +522,7 @@ mod tests {
         );
         assert_eq!(
             messages_request_body.tools,
-            Some(vec![Tool {
+            Some(vec![ToolDefinition {
                 name: "tool".into(),
                 description: Some("tool description".into()),
                 input_schema: serde_json::Value::Null,

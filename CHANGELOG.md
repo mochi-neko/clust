@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `clust::messages::StopReason::ToolUse`.
 - Add tools for `clust::messages::MessagesRequestBody`.
 - Add tool use content block for `clust::messages::Content`.
+- Add too result content block for `clust::messages::Content`.
 
 ### Removed
 
