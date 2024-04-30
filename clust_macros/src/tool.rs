@@ -1,12 +1,12 @@
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-use std::collections::BTreeMap;
-
 use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
 use syn::{AttrStyle, Expr, ItemFn, Meta};
 use valico::json_schema::PrimitiveType;
+
+use proc_macro::TokenStream;
+use std::collections::BTreeMap;
 
 use crate::parameter_type::ParameterType;
 use crate::return_type::ReturnType;
@@ -47,10 +47,8 @@ impl ToolInformation {
             builder.desc(&description.clone());
         }
 
-        let mut required = Vec::new();
-
-        for parameter in &self.parameters {
-            builder.properties(|properties| {
+        builder.properties(|properties| {
+            for parameter in &self.parameters {
                 properties.insert(&parameter.name, |property| {
                     property.type_(
                         parameter
@@ -71,16 +69,16 @@ impl ToolInformation {
                         });
                     }
                 });
-            });
-
-            if let ParameterType::Option(_) = parameter._type {
-                // Do nothing
-            } else {
-                required.push(parameter.name.clone());
             }
-        }
+        });
 
-        builder.required(required);
+        builder.required(
+            self.parameters
+                .iter()
+                .filter(|parameter| !parameter._type.optional())
+                .map(|parameter| parameter.name.clone())
+                .collect(),
+        );
 
         builder.into_json()
     }
@@ -218,10 +216,10 @@ fn get_parameter_types(func: &ItemFn) -> Vec<ParameterWithNoDescription> {
                             name: ident.ident.to_string(),
                             _type: ParameterType::from_syn_type(&pat.ty),
                         }
-                    },
+                    }
                     | _ => panic!("Tool trait requires named fields"),
                 }
-            },
+            }
             | _ => panic!("Tool trait can only be derived for functions with named fields."),
         }
     }).collect()
@@ -302,10 +300,13 @@ fn quote_invoke_parameters(
         .map(|parameter| parameter.name.clone())
         .map(|name| {
             quote! {
-                tool_use.input.get(#name)
-                    .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#name.to_string()))?
-                    .to_string()
-                    .parse()
+                serde_json::from_value(
+                    tool_use
+                        .input
+                        .get(#name)
+                        .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#name.to_string()))?
+                        .clone()
+                    )
                     .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#name.to_string()))?
             }
         })
@@ -806,26 +807,88 @@ mod test {
     }
 
     #[test]
-    fn test_is_optional_type() {
+    fn test_build_json_schema() {
         let input = quote! {
-            fn test_function(arg1: Option<i32>, arg2: u32) -> i32 {
-                arg1.unwrap()
+            /// A function for testing.
+            ///
+            /// ## Arguments
+            /// - `arg1` - First argument.
+            fn test_function(arg1: i32) -> i32 {
+                arg1
             }
         };
 
         let item_func = syn::parse_str::<ItemFn>(&input.to_string()).unwrap();
-        let parameter_types = get_parameter_types(&item_func);
+        let tool_information = get_tool_information(&item_func);
+        let schema = tool_information.build_json_schema();
 
-        assert_eq!(parameter_types.len(), 2);
-        assert_eq!(parameter_types[0].name, "arg1");
         assert_eq!(
-            parameter_types[0]._type,
-            ParameterType::Option(Box::new(ParameterType::Integer)),
+            serde_json::to_string_pretty(&schema).unwrap(),
+            r#"{
+  "description": "A function for testing.",
+  "properties": {
+    "arg1": {
+      "description": "First argument.",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "arg1"
+  ],
+  "type": "object"
+}"#
         );
-        assert_eq!(parameter_types[1].name, "arg2");
+    }
+
+    #[test]
+    fn test_build_json_schema_with_multi_args() {
+        let input = quote! {
+            /// A function for testing.
+            ///
+            /// ## Arguments
+            /// - `arg1` - First argument.
+            /// - `arg2` - Second argument.
+            /// - `arg3` - Third argument.
+            fn test_function(
+                arg1: f32,
+                arg2: Option<String>,
+                arg3: Vec<bool>)
+            -> f32 {
+                arg1
+            }
+        };
+
+        let item_func = syn::parse_str::<ItemFn>(&input.to_string()).unwrap();
+        let tool_information = get_tool_information(&item_func);
+        let schema = tool_information.build_json_schema();
+
         assert_eq!(
-            parameter_types[1]._type,
-            ParameterType::Integer
+            serde_json::to_string_pretty(&schema).unwrap(),
+            r#"{
+  "description": "A function for testing.",
+  "properties": {
+    "arg1": {
+      "description": "First argument.",
+      "type": "number"
+    },
+    "arg2": {
+      "description": "Second argument.",
+      "type": "string"
+    },
+    "arg3": {
+      "description": "Third argument.",
+      "items": {
+        "type": "boolean"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "arg1",
+    "arg3"
+  ],
+  "type": "object"
+}"#
         );
     }
 }

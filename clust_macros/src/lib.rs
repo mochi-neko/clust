@@ -3,9 +3,9 @@
 use crate::tool::impl_tool;
 use proc_macro::TokenStream;
 
+mod parameter_type;
 mod return_type;
 mod tool;
-mod parameter_type;
 
 /// A procedural macro that generates a `clust::messages::Tool` or `clust::messages::AsyncTool`
 /// implementation for the annotated function with documentation.
@@ -31,8 +31,7 @@ mod parameter_type;
 ///     - `Vec<T>` where `T` is supported type.
 ///     - `&[T]` where `T` is supported type.
 ///     - `&[T; N]` where `T` is supported type and `N` is a constant.
-///   - Option
-///     - `Option<T>` where `T` is supported type.
+///   - e.g. `fn function(arg1: i32, arg2: String, arg3: Vec<f64>) -> T`
 ///
 /// ## Supported return values
 /// - None
@@ -52,13 +51,14 @@ mod parameter_type;
 /// - Asynchronous -> implement `clust::messages::AsyncTool`
 ///   - e.g. `async fn function() -> T`
 ///
-/// ## Supported documentation formats
+/// ## (Optional) Supported documentation formats
 /// 1. Description block for the function at the top of document.
 /// 2. Arguments block for the function with
 ///   - header: `# Arguments`, `## Arguments`, `# Parameters` or `## Parameters`.
 ///   - listed items: `- `arg1` - Description for the argument` or `* `arg1` - Description for the argument`.
 /// 3. Other blocks are ignored.
 ///
+/// e.g.
 /// ```rust
 /// /// Description for the function.
 /// ///

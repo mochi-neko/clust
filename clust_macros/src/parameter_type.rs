@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use syn::{
-    GenericArgument, PathArguments, Type, TypeArray, TypeParen, TypeSlice,
+    GenericArgument, PathArguments, Type, TypeArray, TypeParen, TypeReference,
 };
 use valico::json_schema::PrimitiveType;
 
@@ -12,8 +12,8 @@ pub(crate) enum ParameterType {
     Number,
     String,
     Array(Box<ParameterType>),
-    Option(Box<ParameterType>),
-    //Enum(Vec<String>), TODO:
+    //Option(Box<ParameterType>), // TODO: Implement function argument parsing for Option that does not implement FromStr(= cannot parse from string).
+    //Enum(Vec<String>),
     Object,
 }
 
@@ -24,7 +24,10 @@ impl Default for ParameterType {
 }
 
 impl Display for ParameterType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
         match self {
             | ParameterType::Null => write!(f, "null"),
             | ParameterType::Boolean => write!(f, "boolean"),
@@ -34,9 +37,9 @@ impl Display for ParameterType {
             | ParameterType::Array(inner) => {
                 write!(f, "array of {}", inner)
             },
-            | ParameterType::Option(inner) => {
-                write!(f, "option of {}", inner)
-            },
+            // | ParameterType::Option(inner) => {
+            //     write!(f, "option of {}", inner)
+            // },
             | ParameterType::Object => write!(f, "object"),
         }
     }
@@ -48,19 +51,20 @@ impl ParameterType {
             | Type::Path(type_path) => {
                 let path_segments = &type_path.path.segments;
                 if let Some(first) = path_segments.first() {
-                    if first.ident == "Option" {
-                        if let PathArguments::AngleBracketed(args) =
-                            first.arguments.clone()
-                        {
-                            if let Some(arg) = args.args.last() {
-                                if let GenericArgument::Type(ty) = arg {
-                                    return Self::Option(Box::new(
-                                        ParameterType::from_syn_type(ty),
-                                    ));
-                                }
-                            }
-                        }
-                    }
+                    // TODO: For Option
+                    // if first.ident == "Option" {
+                    //     if let PathArguments::AngleBracketed(args) =
+                    //         first.arguments.clone()
+                    //     {
+                    //         if let Some(arg) = args.args.last() {
+                    //             if let GenericArgument::Type(ty) = arg {
+                    //                 return Self::Option(Box::new(
+                    //                     ParameterType::from_syn_type(ty),
+                    //                 ));
+                    //             }
+                    //         }
+                    //     }
+                    // }
 
                     if first.ident == "Vec" {
                         if let PathArguments::AngleBracketed(args) =
@@ -105,11 +109,6 @@ impl ParameterType {
             ))),
             // Slice type like [T]
             | Type::Slice(slice_type) => {
-                // [str]
-                if Self::is_string_slice(slice_type) {
-                    return Self::String;
-                }
-
                 // Other slices
                 Self::Array(Box::new(Self::from_syn_type(
                     slice_type.elem.as_ref(),
@@ -126,6 +125,11 @@ impl ParameterType {
             },
             // Reference type like &T or &mut T
             | Type::Reference(reference_type) => {
+                // &str
+                if Self::is_str(reference_type) {
+                    return Self::String;
+                }
+
                 Self::from_syn_type(reference_type.elem.as_ref())
             },
             // Tuple type or other Object types
@@ -133,7 +137,7 @@ impl ParameterType {
         }
     }
 
-    fn is_string_slice(ty: &TypeSlice) -> bool {
+    fn is_str(ty: &TypeReference) -> bool {
         if let Type::Path(type_path) = ty.elem.as_ref() {
             let path_segments = &type_path.path.segments;
             if let Some(last) = path_segments.last() {
@@ -154,8 +158,15 @@ impl ParameterType {
             | ParameterType::Number => PrimitiveType::Number,
             | ParameterType::String => PrimitiveType::String,
             | ParameterType::Array(_) => PrimitiveType::Array,
-            | ParameterType::Option(inner) => inner.to_primitive_type(),
+            // | ParameterType::Option(inner) => inner.to_primitive_type(),
             | ParameterType::Object => PrimitiveType::Object,
+        }
+    }
+
+    pub(crate) fn optional(&self) -> bool {
+        match self {
+            // | ParameterType::Option(_) => true,
+            | _ => false,
         }
     }
 }
@@ -286,9 +297,10 @@ mod tests {
             ),
             ParameterType::String
         );
+
         assert_eq!(
             ParameterType::from_syn_type(
-                &syn::parse_str::<Type>("&[str]").unwrap()
+                &syn::parse_str::<Type>("&str").unwrap()
             ),
             ParameterType::String
         );
@@ -311,29 +323,29 @@ mod tests {
         );
     }
 
-    #[test]
-    fn option() {
-        assert_eq!(
-            ParameterType::from_syn_type(
-                &syn::parse_str::<Type>("Option<i32>").unwrap()
-            ),
-            ParameterType::Option(Box::new(ParameterType::Integer))
-        );
-
-        assert_eq!(
-            ParameterType::from_syn_type(
-                &syn::parse_str::<Type>("Option<bool>").unwrap()
-            ),
-            ParameterType::Option(Box::new(ParameterType::Boolean))
-        );
-
-        assert_eq!(
-            ParameterType::from_syn_type(
-                &syn::parse_str::<Type>("Option<String>").unwrap()
-            ),
-            ParameterType::Option(Box::new(ParameterType::String))
-        );
-    }
+    // #[test]
+    // fn option() {
+    //     assert_eq!(
+    //         ParameterType::from_syn_type(
+    //             &syn::parse_str::<Type>("Option<i32>").unwrap()
+    //         ),
+    //         ParameterType::Option(Box::new(ParameterType::Integer))
+    //     );
+    // 
+    //     assert_eq!(
+    //         ParameterType::from_syn_type(
+    //             &syn::parse_str::<Type>("Option<bool>").unwrap()
+    //         ),
+    //         ParameterType::Option(Box::new(ParameterType::Boolean))
+    //     );
+    // 
+    //     assert_eq!(
+    //         ParameterType::from_syn_type(
+    //             &syn::parse_str::<Type>("Option<String>").unwrap()
+    //         ),
+    //         ParameterType::Option(Box::new(ParameterType::String))
+    //     );
+    // }
 
     #[test]
     fn object() {
