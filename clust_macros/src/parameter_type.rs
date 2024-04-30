@@ -12,7 +12,7 @@ pub(crate) enum ParameterType {
     Number,
     String,
     Array(Box<ParameterType>),
-    //Option(Box<ParameterType>), // TODO: Implement function argument parsing for Option that does not implement FromStr(= cannot parse from string).
+    Option(Box<ParameterType>),
     //Enum(Vec<String>),
     Object,
 }
@@ -37,9 +37,9 @@ impl Display for ParameterType {
             | ParameterType::Array(inner) => {
                 write!(f, "array of {}", inner)
             },
-            // | ParameterType::Option(inner) => {
-            //     write!(f, "option of {}", inner)
-            // },
+            | ParameterType::Option(inner) => {
+                write!(f, "option of {}", inner)
+            },
             | ParameterType::Object => write!(f, "object"),
         }
     }
@@ -51,20 +51,19 @@ impl ParameterType {
             | Type::Path(type_path) => {
                 let path_segments = &type_path.path.segments;
                 if let Some(first) = path_segments.first() {
-                    // TODO: For Option
-                    // if first.ident == "Option" {
-                    //     if let PathArguments::AngleBracketed(args) =
-                    //         first.arguments.clone()
-                    //     {
-                    //         if let Some(arg) = args.args.last() {
-                    //             if let GenericArgument::Type(ty) = arg {
-                    //                 return Self::Option(Box::new(
-                    //                     ParameterType::from_syn_type(ty),
-                    //                 ));
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                    if first.ident == "Option" {
+                        if let PathArguments::AngleBracketed(args) =
+                            first.arguments.clone()
+                        {
+                            if let Some(arg) = args.args.last() {
+                                if let GenericArgument::Type(ty) = arg {
+                                    return Self::Option(Box::new(
+                                        ParameterType::from_syn_type(ty),
+                                    ));
+                                }
+                            }
+                        }
+                    }
 
                     if first.ident == "Vec" {
                         if let PathArguments::AngleBracketed(args) =
@@ -158,14 +157,14 @@ impl ParameterType {
             | ParameterType::Number => PrimitiveType::Number,
             | ParameterType::String => PrimitiveType::String,
             | ParameterType::Array(_) => PrimitiveType::Array,
-            // | ParameterType::Option(inner) => inner.to_primitive_type(),
+            | ParameterType::Option(inner) => inner.to_primitive_type(),
             | ParameterType::Object => PrimitiveType::Object,
         }
     }
 
     pub(crate) fn optional(&self) -> bool {
         match self {
-            // | ParameterType::Option(_) => true,
+            | ParameterType::Option(_) => true,
             | _ => false,
         }
     }
@@ -323,29 +322,29 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn option() {
-    //     assert_eq!(
-    //         ParameterType::from_syn_type(
-    //             &syn::parse_str::<Type>("Option<i32>").unwrap()
-    //         ),
-    //         ParameterType::Option(Box::new(ParameterType::Integer))
-    //     );
-    // 
-    //     assert_eq!(
-    //         ParameterType::from_syn_type(
-    //             &syn::parse_str::<Type>("Option<bool>").unwrap()
-    //         ),
-    //         ParameterType::Option(Box::new(ParameterType::Boolean))
-    //     );
-    // 
-    //     assert_eq!(
-    //         ParameterType::from_syn_type(
-    //             &syn::parse_str::<Type>("Option<String>").unwrap()
-    //         ),
-    //         ParameterType::Option(Box::new(ParameterType::String))
-    //     );
-    // }
+    #[test]
+    fn option() {
+        assert_eq!(
+            ParameterType::from_syn_type(
+                &syn::parse_str::<Type>("Option<i32>").unwrap()
+            ),
+            ParameterType::Option(Box::new(ParameterType::Integer))
+        );
+
+        assert_eq!(
+            ParameterType::from_syn_type(
+                &syn::parse_str::<Type>("Option<bool>").unwrap()
+            ),
+            ParameterType::Option(Box::new(ParameterType::Boolean))
+        );
+
+        assert_eq!(
+            ParameterType::from_syn_type(
+                &syn::parse_str::<Type>("Option<String>").unwrap()
+            ),
+            ParameterType::Option(Box::new(ParameterType::String))
+        );
+    }
 
     #[test]
     fn object() {

@@ -297,17 +297,30 @@ fn quote_invoke_parameters(
     info
         .parameters
         .iter()
-        .map(|parameter| parameter.name.clone())
-        .map(|name| {
-            quote! {
-                serde_json::from_value(
-                    tool_use
-                        .input
-                        .get(#name)
-                        .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#name.to_string()))?
-                        .clone()
+        .map(|parameter| {
+            let name = parameter.name.clone();
+            if !parameter._type.optional() {
+                quote! {
+                    serde_json::from_value(
+                        tool_use
+                            .input
+                            .get(#name)
+                            .ok_or_else(|| clust::messages::ToolCallError::ParameterNotFound(#name.to_string()))?
+                            .clone()
                     )
                     .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#name.to_string()))?
+                }
+            } else {
+                quote! {
+                    serde_json::from_value(
+                        tool_use
+                            .input
+                            .get(#name)
+                            .unwrap_or(&serde_json::Value::Null)
+                            .clone()
+                    )
+                    .map_err(|_| clust::messages::ToolCallError::ParameterParseFailed(#name.to_string()))?
+                }
             }
         })
         .collect()

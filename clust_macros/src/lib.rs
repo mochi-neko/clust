@@ -31,6 +31,8 @@ mod tool;
 ///     - `Vec<T>` where `T` is supported type.
 ///     - `&[T]` where `T` is supported type.
 ///     - `&[T; N]` where `T` is supported type and `N` is a constant.
+///   - Option
+///     - `Option<T>` where `T` is supported type.
 ///   - e.g. `fn function(arg1: i32, arg2: String, arg3: Vec<f64>) -> T`
 ///
 /// ## Supported return values
