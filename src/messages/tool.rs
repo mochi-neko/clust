@@ -175,6 +175,45 @@ impl ToolResult {
     }
 }
 
+/// A list of tools that can be called by the assistant.
+pub struct ToolList {
+    tools: Vec<Box<dyn Tool>>,
+}
+
+impl ToolList {
+    /// Create a new tool list.
+    pub fn new(tools: Vec<Box<dyn Tool>>) -> Self {
+        Self {
+            tools,
+        }
+    }
+
+    /// List of tool definitions.
+    pub fn definitions(&self) -> Vec<ToolDefinition> {
+        self.tools
+            .iter()
+            .map(|tool| tool.definition())
+            .collect::<Vec<ToolDefinition>>()
+            .into()
+    }
+
+    /// Calls a tool in this list.
+    pub fn call(
+        &self,
+        tool_use: ToolUse,
+    ) -> Result<ToolResult, ToolCallError> {
+        let target_name = tool_use.name.clone();
+
+        let target_tool = self
+            .tools
+            .iter()
+            .find(|tool| tool.definition().name == target_name)
+            .ok_or_else(|| ToolCallError::ToolNotFound(target_name))?;
+
+        target_tool.call(tool_use)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -465,5 +504,74 @@ mod tests {
         assert_eq!(tool_result.tool_use_id, "id");
         assert_eq!(tool_result.content, None);
         assert_eq!(tool_result.is_error, Some(true));
+    }
+
+    #[test]
+    fn tool_list() {
+        struct TestTool {}
+
+        impl Tool for TestTool {
+            fn definition(&self) -> ToolDefinition {
+                ToolDefinition {
+                    name: "test_tool".to_string(),
+                    description: Some("test tool description".to_string()),
+                    input_schema: serde_json::json!({
+                        "properties": {
+                            "arg1": {
+                                "description": "First argument.",
+                                "type": "integer",
+                            },
+                        },
+                        "required": ["arg1"],
+                        "type": "object",
+                    }),
+                }
+            }
+
+            fn call(
+                &self,
+                tool_use: ToolUse,
+            ) -> Result<ToolResult, ToolCallError> {
+                Ok(ToolResult::success(
+                    tool_use.id.clone(),
+                    Some("1"),
+                ))
+            }
+        }
+
+        let tool_use = ToolUse {
+            id: "test_tool_use_id".to_string(),
+            name: "test_tool".to_string(),
+            input: serde_json::json!({"arg1": 42}),
+        };
+
+        let tool_list = ToolList::new(vec![Box::new(
+            TestTool {},
+        )]);
+
+        let tool_result = tool_list
+            .call(tool_use)
+            .unwrap();
+        assert_eq!(tool_result.is_error, None);
+        assert_eq!(
+            tool_result.tool_use_id,
+            "test_tool_use_id"
+        );
+        assert_eq!(
+            tool_result
+                .content
+                .unwrap()
+                .text,
+            "1"
+        );
+
+        let tool_use = ToolUse {
+            id: "test_tool_use_id_incorrect".to_string(),
+            name: "test_tool_incorrect".to_string(),
+            input: serde_json::json!({"arg1": 42}),
+        };
+
+        let tool_result = tool_list.call(tool_use);
+        assert!(tool_result.is_err())
     }
 }

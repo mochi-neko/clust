@@ -123,7 +123,7 @@ impl Content {
     pub fn flatten_into_text(&self) -> Result<&str, ContentFlatteningError> {
         match self {
             | Content::SingleText(text) => Ok(text),
-            | Content::MultipleBlocks(block) => match block.first() {
+            | Content::MultipleBlocks(blocks) => match blocks.first() {
                 | Some(first) => match first {
                     | ContentBlock::Text(text) => Ok(&text.text),
                     | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
@@ -145,7 +145,7 @@ impl Content {
             | Content::SingleText(_) => {
                 Err(ContentFlatteningError::NotFoundTargetBlock)
             },
-            | Content::MultipleBlocks(block) => match block.first() {
+            | Content::MultipleBlocks(blocks) => match blocks.first() {
                 | Some(first) => match first {
                     | ContentBlock::Image(image) => Ok(&image.source),
                     | _ => Err(ContentFlatteningError::NotFoundTargetBlock),
@@ -158,7 +158,7 @@ impl Content {
     /// Flattens the content into a single tool use.
     /// - `Content::SingleText` => Returns "`Err(NotFoundTargetBlock)`"
     /// - `Content::MultipleBlock` =>
-    ///     - Has `ContentBlock::ToolUse` at the first block => Returns "`Ok(tool_use)`"
+    ///     - Has `ContentBlock::ToolUse` at the last block => Returns "`Ok(tool_use)`"
     ///     - Otherwise => Returns "`Err(NotFoundTargetBlock)`".
     pub fn flatten_into_tool_use(
         &self
@@ -167,8 +167,8 @@ impl Content {
             | Content::SingleText(_) => {
                 Err(ContentFlatteningError::NotFoundTargetBlock)
             },
-            | Content::MultipleBlocks(block) => match block.first() {
-                | Some(first) => match first {
+            | Content::MultipleBlocks(blocks) => match blocks.last() {
+                | Some(last) => match last {
                     | ContentBlock::ToolUse(tool_use) => {
                         Ok(tool_use.tool_use.clone())
                     },
