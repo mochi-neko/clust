@@ -1700,12 +1700,12 @@ mod tests {
 
         assert_eq!(
             Content::from(vec![
+                ContentBlock::from("text"),
                 ContentBlock::from(ToolUse::new(
                     "id",
                     "name",
                     serde_json::Value::Object(serde_json::Map::new())
                 )),
-                ContentBlock::from("text"),
             ])
             .flatten_into_tool_use()
             .unwrap(),

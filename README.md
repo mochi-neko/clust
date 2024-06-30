@@ -309,7 +309,7 @@ Support [tool use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use
 
 When you define a tool as Rust function with documentation comment like this:
 
-```rust,no_run
+```txt
 /// Get the current weather in a given location
 ///
 /// ## Arguments
@@ -321,7 +321,7 @@ fn get_weather(location: String) -> String {
 
 you can use the `clust::clust_macros::clust_tool` attribute macro with `macros` feature flag to generate code:
 
-```rust,no_run
+```txt
 /// Get the current weather in a given location
 ///
 /// ## Arguments
@@ -334,19 +334,19 @@ fn get_weather(location: String) -> String {
 
 and create an instance of `clust::messages::Tool` that named by `ClustTool_{function_name}` from the function:
 
-```rust,no_run
+```txt
 let tool = ClustTool_get_weather {};
 ```
 
 Get the tool definition from `clust::messages::Tool` for API request:
 
-```rust,no_run
+```txt
 let tool_definition = tool.definition();
 ```
 
 and call the tool with tool use got from the API response:
 
-```rust,no_run
+```txt
 let tool_result = tool.call(tool_use);
 ```
 
