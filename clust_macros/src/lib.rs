@@ -12,7 +12,7 @@ mod tool;
 ///
 /// See also [the official guide](https://docs.anthropic.com/claude/docs/functions-external-tools).
 ///
-/// ## Supported arguments
+/// ## Supported argument types
 /// - None
 ///   - e.g. `fn function() -> T`
 /// - Types that can be represented as JSON object.
@@ -35,7 +35,7 @@ mod tool;
 ///     - `Option<T>` where `T` is supported type.
 ///   - e.g. `fn function(arg1: i32, arg2: String, arg3: Vec<f64>) -> T`
 ///
-/// ## Supported return values
+/// ## Supported return value types
 /// - None
 ///   - e.g. `fn function()`
 /// - A type that can be formatted, i.e. implements `std::fmt::Display`.
@@ -88,8 +88,6 @@ mod tool;
 ///
 /// let tool = ClustTool_incrementer {};
 ///
-/// let description = tool.description();
-///
 /// let tool_use = ToolUse::new(
 ///     "toolu_XXXX",
 ///     "incrementer",
@@ -99,46 +97,9 @@ mod tool;
 /// );
 ///
 /// let result = tool.call(tool_use).unwrap();
-/// ```
-///
-/// Generated XML tool description from above implementation is as follows:
-///
-/// ```xml
-/// <tool_description>
-///   <tool_name>incrementer</tool_name>
-///   <description>Increments the argument by 1.</description>
-///   <parameters>
-///     <parameter>
-///       <name>value</name>
-///       <type>i32</type>
-///       <description>Target value.</description>
-///     </parameter>
-///   </parameters>
-/// </tool_description>
-/// ```
-///
-/// This tool can be called with a function calls as following XML format:
-///
-/// ```xml
-/// <function_calls>
-///   <invoke>
-///     <tool_name>incrementer</tool_name>
-///     <parameters>
-///         <value>42</value>
-///     </parameters>
-///   </invoke>
-/// </function_calls>
-/// ```
-///
-/// Calling result is as following XML format:
-///
-/// ```xml
-/// <function_results>
-///   <result>
-///     <tool_name>incrementer</tool_name>
-///     <stdout>43</stdout>
-///   </result>
-/// </function_results>
+/// assert_eq!(result.tool_use_id, "toolu_XXXX");
+/// assert_eq!(result.is_error, None);
+/// assert_eq!(result.content.unwrap().text, "43");
 /// ```
 #[proc_macro_attribute]
 pub fn clust_tool(

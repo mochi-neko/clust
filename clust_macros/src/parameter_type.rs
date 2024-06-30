@@ -13,7 +13,7 @@ pub(crate) enum ParameterType {
     String,
     Array(Box<ParameterType>),
     Option(Box<ParameterType>),
-    //Enum(Vec<String>),
+    //Enum(Vec<String>), // TODO: Implement Enum later
     Object,
 }
 
