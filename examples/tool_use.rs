@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     // let client = Client::from_api_key(clust::ApiKey::new("your-api-key"));
 
     // 2. Create a tool instance and tool list.
-    let tool_increment = ClustTool_get_weather {};
+    let tool_increment = ClustTool_get_weather {}; // function_name -> Generate ClustTool_function_name struct that implements Tool
     let tools = ToolList::new(vec![Box::new(
         tool_increment,
     )]);

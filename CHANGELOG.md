@@ -10,16 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support `Future` for `clust::messages::AsyncTool` by `clust::attributes::clust_tool`.
+- Support enum for argument of `clust::attributes::clust_tool`.
 
 ## [0.9.0] - 2024-04-XX
 
 ### Added
 
-- Add the beta feature header for the `clust::Client`.
-- Add `clust::messages::StopReason::ToolUse`.
-- Add tools for `clust::messages::MessagesRequestBody`.
-- Add tool use content block for `clust::messages::Content`.
-- Add too result content block for `clust::messages::Content`.
+- Add the Claude 3.5 Sonnet model: `claude-3-5-sonnet-20240307`. <- (#4)
+- Add the tool use support.
+- Add a tool use example.
 
 ### Removed
 

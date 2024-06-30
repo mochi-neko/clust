@@ -271,7 +271,59 @@
 //! ```
 //!
 //! ### Tool use
-//! TODO:
+//!
+//! Support [tool use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use) for two methods:
+//!
+//! #### 1. Use `clust_tool` attribute macro for Rust function
+//!
+//! When you define a tool as Rust function with documentation comment like this:
+//!
+//! ```rust,no_run
+//! /// Get the current weather in a given location
+//! ///
+//! /// ## Arguments
+//! /// - `location` - The city and state, e.g. San Francisco, CA
+//! fn get_weather(location: String) -> String {
+//!     "15 degrees".to_string() // Dummy response
+//! }
+//! ```
+//!
+//! you can use the `clust::clust_macros::clust_tool` attribute macro with `macros` feature flag to generate code:
+//!
+//! ```rust,no_run
+//! /// Get the current weather in a given location
+//! ///
+//! /// ## Arguments
+//! /// - `location` - The city and state, e.g. San Francisco, CA
+//! #[clust_tool] // <- Generate `clust::messages::Tool` for this function
+//! fn get_weather(location: String) -> String {
+//!     "15 degrees".to_string() // Dummy response
+//! }
+//! ```
+//!
+//! and create an instance of `clust::messages::Tool` that named by `ClustTool_{function_name}` from the function:
+//!
+//! ```rust,no_run
+//! let tool = ClustTool_get_weather {};
+//! ```
+//!
+//! Get the tool definition from `clust::messages::Tool` for API request:
+//!
+//! ```rust,no_run
+//! let tool_definition = tool.definition();
+//! ```
+//!
+//! and call the tool with tool use got from the API response:
+//!
+//! ```rust,no_run
+//! let tool_result = tool.call(tool_use);
+//! ```
+//!
+//! See also [a tool use example](./examples/tool_use.rs) and [clust_tool](./clust_macros/src/lib.rs) for details.
+//!
+//! #### 2. Manually implement `clust::messages::Tool` or `clust::messages::AsyncTool`
+//!
+//! You can manually implement `clust::messages::Tool` or `clust::messages::AsyncTool` for your tool.
 //!
 //! ## Examples
 //!
@@ -406,9 +458,9 @@
 //!
 //! See [a conversation example](./examples/conversation.rs).
 //!
-//! ### Function calling
+//! ### Tool use
 //!
-//! See [a function calling example](./examples/function_calling.rs).
+//! See [a tool use example](./examples/tool_use.rs).
 //!
 //! ### Other examples
 //!
