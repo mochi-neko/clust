@@ -28,6 +28,9 @@ struct Arguments {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    #[cfg(feature = "tracing")]
+    init_tracing_subscriber();
+
     // 0. Parse the command-line arguments.
     let arguments = Arguments::parse();
 
@@ -67,4 +70,13 @@ async fn main() -> anyhow::Result<()> {
     );
 
     Ok(())
+}
+
+#[cfg(feature = "tracing")]
+fn init_tracing_subscriber() {
+    use tracing_subscriber::util::SubscriberInitExt;
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .finish();
+    subscriber.init();
 }

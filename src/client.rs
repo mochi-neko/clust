@@ -8,7 +8,7 @@ use crate::messages::{
 use crate::{ApiKey, Beta, Version};
 
 /// The API client.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     /// The API key.
     api_key: ApiKey,
