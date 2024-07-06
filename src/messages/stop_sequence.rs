@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 /// The stop sequence.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 #[serde(transparent)]
 pub struct StopSequence {
     value: String,
@@ -52,7 +53,7 @@ mod tests {
             "\"stop-sequence\""
         );
     }
-    
+
     #[test]
     fn deserialize() {
         let stop_sequence = StopSequence::new("stop-sequence");
@@ -62,4 +63,3 @@ mod tests {
         );
     }
 }
-

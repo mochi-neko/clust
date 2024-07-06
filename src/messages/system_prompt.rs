@@ -5,6 +5,7 @@ use std::fmt::Display;
 /// A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role.
 /// See our [guide to system prompts](https://docs.anthropic.com/claude/docs/system-prompts).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 #[serde(transparent)]
 pub struct SystemPrompt {
     value: String,

@@ -5,6 +5,7 @@ use crate::messages::{Content, Role};
 #[derive(
     Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
 )]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct Message {
     /// The role of the message.
     pub role: Role,
@@ -44,7 +45,7 @@ impl Message {
     /// ## Example
     /// ```rust
     /// use clust::messages::{Content, Message};
-    /// 
+    ///
     /// let message = Message::assistant(Content::from("assistant message"));
     /// ```
     pub fn assistant<T>(content: T) -> Self
@@ -66,7 +67,7 @@ impl Message {
     /// ## Example
     /// ```rust
     /// use clust::messages::{Content, Message, Role};
-    /// 
+    ///
     /// let message = Message::new(Role::User, Content::from("user message"));
     /// let message = Message::new(Role::Assistant, Content::from("assistant message"));
     /// ```
@@ -104,13 +105,13 @@ mod tests {
             "assistant-message".into()
         );
     }
-    
+
     #[test]
     fn new() {
         let message = Message::new(Role::User, "user-message");
         assert_eq!(message.role, Role::User);
         assert_eq!(message.content, "user-message".into());
-        
+
         let message = Message::new(Role::Assistant, "assistant-message");
         assert_eq!(message.role, Role::Assistant);
         assert_eq!(

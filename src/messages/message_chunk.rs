@@ -12,6 +12,7 @@ use crate::messages::{
 
 /// The stream chunk of messages.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum MessageChunk {
     /// Message start chunk.
     MessageStart(MessageStartChunk),
@@ -279,6 +280,7 @@ impl_enum_string_serialization!(
 
 /// The message start chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct MessageStartChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
@@ -310,6 +312,7 @@ impl MessageStartChunk {
 
 /// The content block start chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ContentBlockStartChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
@@ -348,6 +351,7 @@ impl ContentBlockStartChunk {
 
 /// The ping chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct PingChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
@@ -375,6 +379,7 @@ impl PingChunk {
 
 /// The content block delta chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ContentBlockDeltaChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
@@ -413,6 +418,7 @@ impl ContentBlockDeltaChunk {
 
 /// The content block stop chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ContentBlockStopChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
@@ -444,6 +450,7 @@ impl ContentBlockStopChunk {
 
 /// The message delta chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct MessageDeltaChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
@@ -482,6 +489,7 @@ impl MessageDeltaChunk {
 
 /// The message stop chunk.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct MessageStopChunk {
     /// The type of stream chunk.
     #[serde(rename = "type")]
@@ -509,6 +517,7 @@ impl MessageStopChunk {
 
 /// The text delta content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct TextDeltaContentBlock {
     /// The content type. It is always `text_delta`.
     #[serde(rename = "type")]
@@ -557,6 +566,7 @@ impl TextDeltaContentBlock {
 #[derive(
     Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
 )]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct StreamStop {
     /// The stop reason of this stream.
     pub stop_reason: Option<StopReason>,
