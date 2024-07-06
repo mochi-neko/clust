@@ -12,6 +12,7 @@ use crate::messages::{
 ///
 /// See also [the Messages API](https://docs.anthropic.com/claude/reference/messages_post).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct MessagesResponseBody {
     /// Unique object identifier.
     ///
@@ -85,7 +86,7 @@ impl MessagesResponseBody {
 }
 
 /// The object type for message.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MessageObjectType {
     /// message
     Message,
@@ -215,7 +216,7 @@ mod tests {
             MessageObjectType::Message
         );
     }
-    
+
     #[test]
     fn create_message() {
         let response = MessagesResponseBody {

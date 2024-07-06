@@ -63,6 +63,7 @@ use crate::messages::{
 /// ].into();
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum Content {
     /// The single text content.
     SingleText(String),
@@ -206,6 +207,7 @@ impl Content {
 
 /// The content block of the message.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub enum ContentBlock {
     /// The text content block.
     Text(TextContentBlock),
@@ -266,6 +268,7 @@ impl_display_for_serialize!(ContentBlock);
 
 /// The text content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct TextContentBlock {
     /// The content type. It is always `text`.
     #[serde(rename = "type")]
@@ -312,6 +315,7 @@ impl TextContentBlock {
 
 /// The image content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ImageContentBlock {
     /// The content type. It is always `image`.
     #[serde(rename = "type")]
@@ -404,6 +408,7 @@ impl_enum_string_serialization!(
 
 /// The image content source.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ImageContentSource {
     /// The source type.
     #[serde(rename = "type")]
@@ -548,6 +553,7 @@ impl ImageMediaType {
 
 /// The tool use content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ToolUseContentBlock {
     /// The content type. It is always `tool_use`.
     #[serde(rename = "type")]
@@ -586,6 +592,7 @@ impl ToolUseContentBlock {
 
 /// The tool result content block.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ToolResultContentBlock {
     /// The content type. It is always `tool_result`.
     #[serde(rename = "type")]

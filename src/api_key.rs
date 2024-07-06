@@ -1,7 +1,7 @@
 use std::env::VarError;
 
 /// The API key of the Anthropic API.
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct ApiKey {
     value: String,
 }

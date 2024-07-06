@@ -3,6 +3,7 @@ use std::fmt::Display;
 
 /// An object describing metadata about the request.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct Metadata {
     /// An external identifier for the user who is associated with the request.
     pub user_id: UserId,
@@ -15,6 +16,7 @@ impl_display_for_serialize!(Metadata);
 /// This should be an uuid, hash value, or other opaque identifier. Anthropic may use this id to help detect abuse.
 /// Do not include any identifying information such as name, email address, or phone number.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 #[serde(transparent)]
 pub struct UserId {
     value: String,

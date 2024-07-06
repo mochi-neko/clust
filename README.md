@@ -28,6 +28,9 @@ clust = "0.9.0"
 
 - `macros`: Enable the `clust::attributse::clust_tool` attribute macro for generating `clust::messages::Tool`
   or `clust::messages::AsyncTool` from a Rust function.
+- `hash`: Derive `Hash` for more types.
+  - Some types already implement `Hash` even without this feature flag.
+  - Some types can't implement `Hash` because they contain fields of `f32` type, which doesn't implement `Hash`.
 
 ## Usages
 

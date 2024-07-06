@@ -28,6 +28,7 @@ pub trait AsyncTool {
 #[derive(
     Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
 )]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ToolDefinition {
     /// Name of the tool.
     pub name: String,
@@ -60,6 +61,7 @@ impl ToolDefinition {
 
 /// A tool use request.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ToolUse {
     /// The ID of the used tool.
     pub id: String,
@@ -104,6 +106,7 @@ impl ToolUse {
 #[derive(
     Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize,
 )]
+#[cfg_attr(feature = "hash", derive(Hash))]
 pub struct ToolResult {
     /// The id of the tool use request this is a result for.
     pub tool_use_id: String,
