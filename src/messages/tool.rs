@@ -214,6 +214,22 @@ impl ToolList {
     }
 }
 
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type")]
+pub enum ToolChoice {
+    /// Allows Claude to decide whether to call any provided tools or not.
+    auto,
+    /// Tells Claude that it must use one of the provided tools, but doesn't force a particular tool.
+    any,
+    /// Forces Claude to always use a particular tool.
+    tool {
+        name: String,
+    },
+}
+
+impl_display_for_serialize!(ToolChoice);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -573,5 +589,95 @@ mod tests {
 
         let tool_result = tool_list.call(tool_use);
         assert!(tool_result.is_err())
+    }
+    #[test]
+    fn test_tool_choice_serialization() {
+        assert_eq!(
+            serde_json::to_value(&ToolChoice::auto).unwrap(),
+            serde_json::json!({"type": "auto"})
+        );
+        assert_eq!(
+            serde_json::to_value(&ToolChoice::any).unwrap(),
+            serde_json::json!({"type": "any"})
+        );
+        assert_eq!(
+            serde_json::to_value(&ToolChoice::tool {
+                name: "get_weather".to_string()
+            })
+            .unwrap(),
+            serde_json::json!({"type": "tool", "name": "get_weather"})
+        );
+    }
+
+    #[test]
+    fn test_tool_choice_deserialization() {
+        assert_eq!(
+            serde_json::from_value::<ToolChoice>(
+                serde_json::json!({"type": "auto"})
+            )
+            .unwrap(),
+            ToolChoice::auto
+        );
+        assert_eq!(
+            serde_json::from_value::<ToolChoice>(
+                serde_json::json!({"type": "any"})
+            )
+            .unwrap(),
+            ToolChoice::any
+        );
+        assert_eq!(
+            serde_json::from_value::<ToolChoice>(
+                serde_json::json!({"type": "tool", "name": "get_weather"})
+            )
+            .unwrap(),
+            ToolChoice::tool {
+                name: "get_weather".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_tool_choice_display() {
+        assert_eq!(
+            ToolChoice::auto.to_string(),
+            "{\n  \"type\": \"auto\"\n}"
+        );
+        assert_eq!(
+            ToolChoice::any.to_string(),
+            "{\n  \"type\": \"any\"\n}"
+        );
+        assert_eq!(
+            ToolChoice::tool {
+                name: "get_weather".to_string()
+            }
+            .to_string(),
+            "{\n  \"type\": \"tool\",\n  \"name\": \"get_weather\"\n}"
+        );
+    }
+
+    #[test]
+    fn test_tool_choice_roundtrip() {
+        let auto_choice = ToolChoice::auto;
+        let any_choice = ToolChoice::any;
+        let tool = ToolChoice::tool {
+            name: "get_weather".to_string(),
+        };
+
+        let auto_json = serde_json::to_string(&auto_choice).unwrap();
+        let any_json = serde_json::to_string(&any_choice).unwrap();
+        let tool_json = serde_json::to_string(&tool).unwrap();
+
+        assert_eq!(
+            serde_json::from_str::<ToolChoice>(&auto_json).unwrap(),
+            auto_choice
+        );
+        assert_eq!(
+            serde_json::from_str::<ToolChoice>(&any_json).unwrap(),
+            any_choice
+        );
+        assert_eq!(
+            serde_json::from_str::<ToolChoice>(&tool_json).unwrap(),
+            tool
+        );
     }
 }

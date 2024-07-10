@@ -68,6 +68,7 @@ pub use system_prompt::SystemPrompt;
 pub use temperature::Temperature;
 pub use tool::AsyncTool;
 pub use tool::Tool;
+pub use tool::ToolChoice;
 pub use tool::ToolDefinition;
 pub use tool::ToolList;
 pub use tool::ToolResult;
