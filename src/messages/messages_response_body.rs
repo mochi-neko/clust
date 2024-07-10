@@ -4,8 +4,8 @@ use crate::macros::{
     impl_display_for_serialize, impl_enum_string_serialization,
 };
 use crate::messages::{
-    ClaudeModel, Content, Message, Role, StopReason,
-    StopSequence, Usage,
+    ClaudeModel, Content, ContentBlock, Message, Role, StopReason,
+    StopSequence, ToolUse, Usage,
 };
 
 /// The response body for the Messages API.
@@ -76,11 +76,34 @@ impl_display_for_serialize!(MessagesResponseBody);
 
 impl MessagesResponseBody {
     /// Creates `Message` from the response body.
-    pub fn crate_message(self) -> Message {
+    pub fn create_message(self) -> Message {
         Message {
             role: self.role,
             content: self.content,
         }
+    }
+
+    /// Extracts tool use information from the response body.
+    pub fn extract_tool_use(&self) -> Option<&ToolUse> {
+        if let Content::MultipleBlocks(blocks) = &self.content {
+            for block in blocks {
+                if let ContentBlock::ToolUse(tool_use_block) = block {
+                    return Some(&tool_use_block.tool_use);
+                }
+            }
+        }
+        None
+    }
+
+    /// Extracts tool name and input from the response body.
+    pub fn extract_tool_fields(&self) -> Option<(String, serde_json::Value)> {
+        self.extract_tool_use()
+            .map(|tool_use| {
+                (
+                    tool_use.name.clone(),
+                    tool_use.input.clone(),
+                )
+            })
     }
 }
 
@@ -215,7 +238,7 @@ mod tests {
             MessageObjectType::Message
         );
     }
-    
+
     #[test]
     fn create_message() {
         let response = MessagesResponseBody {
@@ -224,8 +247,152 @@ mod tests {
         };
 
         assert_eq!(
-            response.crate_message(),
+            response.create_message(),
             Message::assistant("content")
+        );
+    }
+
+    #[test]
+    fn test_extract_tool_use() {
+        // Test case 1: Valid tool use
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![
+                ContentBlock::ToolUse(ToolUseContentBlock {
+                    _type: ContentType::ToolUse,
+                    tool_use: ToolUse {
+                        id: "tool_id".to_string(),
+                        name: "test_tool".to_string(),
+                        input: serde_json::json!({"key": "value"}),
+                    },
+                }),
+            ]),
+            ..Default::default()
+        };
+        let tool_use = response.extract_tool_use();
+        assert!(tool_use.is_some());
+        assert_eq!(tool_use.unwrap().name, "test_tool");
+
+        // Test case 2: No tool use
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![ContentBlock::Text(
+                TextContentBlock::new("text"),
+            )]),
+            ..Default::default()
+        };
+        let tool_use = response.extract_tool_use();
+        assert!(tool_use.is_none());
+
+        // Test case 3: Empty content
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![]),
+            ..Default::default()
+        };
+        let tool_use = response.extract_tool_use();
+        assert!(tool_use.is_none());
+
+        // Test case 4: Multiple tool uses (should return the first one)
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![
+                ContentBlock::ToolUse(ToolUseContentBlock {
+                    _type: ContentType::ToolUse,
+                    tool_use: ToolUse {
+                        id: "tool_id_1".to_string(),
+                        name: "test_tool_1".to_string(),
+                        input: serde_json::json!({"key": "value1"}),
+                    },
+                }),
+                ContentBlock::ToolUse(ToolUseContentBlock {
+                    _type: ContentType::ToolUse,
+                    tool_use: ToolUse {
+                        id: "tool_id_2".to_string(),
+                        name: "test_tool_2".to_string(),
+                        input: serde_json::json!({"key": "value2"}),
+                    },
+                }),
+            ]),
+            ..Default::default()
+        };
+        let tool_use = response.extract_tool_use();
+        assert!(tool_use.is_some());
+        assert_eq!(tool_use.unwrap().name, "test_tool_1");
+    }
+
+    #[test]
+    fn test_extract_tool_fields() {
+        // Test case 1: Valid tool use
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![
+                ContentBlock::ToolUse(ToolUseContentBlock {
+                    _type: ContentType::ToolUse,
+                    tool_use: ToolUse {
+                        id: "tool_id".to_string(),
+                        name: "test_tool".to_string(),
+                        input: serde_json::json!({"key": "value"}),
+                    },
+                }),
+            ]),
+            ..Default::default()
+        };
+        let fields = response.extract_tool_fields();
+        assert!(fields.is_some());
+        let (name, input) = fields.unwrap();
+        assert_eq!(name, "test_tool");
+        assert_eq!(
+            input,
+            serde_json::json!({"key": "value"})
+        );
+
+        // Test case 2: No tool use
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![ContentBlock::Text(
+                TextContentBlock::new("text"),
+            )]),
+            ..Default::default()
+        };
+        let fields = response.extract_tool_fields();
+        assert!(fields.is_none());
+
+        // Test case 3: Empty content
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![]),
+            ..Default::default()
+        };
+        let fields = response.extract_tool_fields();
+        assert!(fields.is_none());
+
+        // Test case 4: Complex input
+        let response = MessagesResponseBody {
+            content: Content::MultipleBlocks(vec![
+                ContentBlock::ToolUse(ToolUseContentBlock {
+                    _type: ContentType::ToolUse,
+                    tool_use: ToolUse {
+                        id: "tool_id".to_string(),
+                        name: "complex_tool".to_string(),
+                        input: serde_json::json!({
+                            "nested": {
+                                "array": [1, 2, 3],
+                                "object": {"a": "b"}
+                            },
+                            "boolean": true
+                        }),
+                    },
+                }),
+            ]),
+            ..Default::default()
+        };
+        let fields = response.extract_tool_fields();
+        assert!(fields.is_some());
+        let (name, input) = fields.unwrap();
+        assert_eq!(name, "complex_tool");
+        assert_eq!(
+            input,
+            serde_json::json!({
+                "nested": {
+                    "array": [1, 2, 3],
+                    "object": {"a": "b"}
+                },
+                "boolean": true
+            })
         );
     }
 }
