@@ -71,7 +71,7 @@ async fn main() -> anyhow::Result<()> {
     // 5. Store the first assistant message.
     request_body
         .messages
-        .push(response.crate_message());
+        .push(response.create_message());
 
     // 6. Add the second user message.
     request_body
@@ -96,7 +96,7 @@ async fn main() -> anyhow::Result<()> {
     // 9. Store the second assistant message.
     request_body
         .messages
-        .push(response.crate_message());
+        .push(response.create_message());
 
     // Continue the conversation...
 
