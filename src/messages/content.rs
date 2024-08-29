@@ -360,6 +360,8 @@ pub enum ContentType {
     ToolUse,
     /// tool_result
     ToolResult,
+    /// input_json_delta
+    InputJsonDelta
 }
 
 impl Default for ContentType {
@@ -389,6 +391,9 @@ impl Display for ContentType {
             | ContentType::ToolResult => {
                 write!(f, "tool_result")
             },
+            | ContentType::InputJsonDelta => {
+                  write!(f, "input_json_delta")
+            },
         }
     }
 }
@@ -399,7 +404,8 @@ impl_enum_string_serialization!(
     Image => "image",
     TextDelta => "text_delta",
     ToolUse => "tool_use",
-    ToolResult => "tool_result"
+    ToolResult => "tool_result",
+    InputJsonDelta => "input_json_delta"
 );
 
 /// The image content source.
