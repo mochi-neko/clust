@@ -1,5 +1,5 @@
 use crate::macros::impl_display_for_serialize;
-use crate::messages::{TextContentBlock, ToolCallError};
+use crate::messages::ToolCallError;
 use std::future::Future;
 
 /// A tool that can be used by assistant.
@@ -109,13 +109,49 @@ pub struct ToolResult {
     pub tool_use_id: String,
     /// The result of the tool, as a string (e.g. "content": "65 degrees") or list of nested content blocks (e.g. "content": [{"type": "text", "text": "65 degrees"}]\). During beta, only the text type content blocks are supported for tool_result content.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<TextContentBlock>,
+    pub content: Option<ToolResultContent>,
     /// Set to true if the tool execution resulted in an error.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_error: Option<bool>,
 }
 
 impl_display_for_serialize!(ToolResult);
+
+#[derive(
+    Debug, Clone, PartialEq,  serde::Serialize, serde::Deserialize,
+)]
+#[serde(untagged)]
+pub enum ToolResultContent {
+    Text(String),
+    Multiple(Vec<super::ContentBlock>),
+}
+
+impl ToolResultContent {
+    pub fn as_text(&self) -> Option<&str> {
+        if let ToolResultContent::Text(txt) = self {
+            Some(txt.as_str())
+        } else {
+            None
+        }
+    }
+}
+impl Into<ToolResultContent> for String {
+    fn into(self) -> ToolResultContent {
+        ToolResultContent::Text(self)
+    }
+}
+
+impl Into<ToolResultContent> for &str {
+    fn into(self) -> ToolResultContent {
+        ToolResultContent::Text(self.to_string())
+    }
+}
+
+impl Default for ToolResultContent {
+    fn default() -> Self {
+        ToolResultContent::Text(Default::default())
+    }
+}
 
 impl ToolResult {
     /// Creates a new `ToolResult` as a success.
@@ -125,7 +161,7 @@ impl ToolResult {
     ) -> Self
     where
         S: Into<String>,
-        T: Into<TextContentBlock>,
+        T: Into<ToolResultContent>,
     {
         Self {
             tool_use_id: tool_use_id.into(),
@@ -153,7 +189,7 @@ impl ToolResult {
     ) -> Self
     where
         S: Into<String>,
-        T: Into<TextContentBlock>,
+        T: Into<ToolResultContent>,
     {
         Self {
             tool_use_id: tool_use_id.into(),
@@ -400,7 +436,7 @@ mod tests {
     fn display_tool_result() {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: Some(TextContentBlock::new("text")),
+            content: Some(ToolResultContent::Text("text".to_string())),
             is_error: None,
         };
         assert_eq!(
@@ -410,7 +446,7 @@ mod tests {
 
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: Some(TextContentBlock::new("text")),
+            content: Some(ToolResultContent::Text("text".to_string())),
             is_error: Some(true),
         };
         assert_eq!(
@@ -423,7 +459,7 @@ mod tests {
     fn serialize_tool_result() {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: Some(TextContentBlock::new("text")),
+            content: Some(ToolResultContent::Text("text".to_string())),
             is_error: None,
         };
         assert_eq!(
@@ -433,7 +469,7 @@ mod tests {
 
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: Some(TextContentBlock::new("text")),
+            content: Some(ToolResultContent::Text("text".to_string())),
             is_error: Some(true),
         };
         assert_eq!(
@@ -446,7 +482,7 @@ mod tests {
     fn deserialize_tool_result() {
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: Some(TextContentBlock::new("text")),
+            content: Some(ToolResultContent::Text("text".to_string())),
             is_error: None,
         };
         assert_eq!(
@@ -459,7 +495,7 @@ mod tests {
 
         let tool_result = ToolResult {
             tool_use_id: "id".to_string(),
-            content: Some(TextContentBlock::new("text")),
+            content: Some(ToolResultContent::Text("text".to_string())),
             is_error: Some(true),
         };
         assert_eq!(
@@ -475,12 +511,12 @@ mod tests {
     fn new_tool_result() {
         let tool_result = ToolResult::success(
             "id",
-            Some(TextContentBlock::new("text")),
+            Some(ToolResultContent::Text("text".to_string())),
         );
         assert_eq!(tool_result.tool_use_id, "id");
         assert_eq!(
             tool_result.content,
-            Some(TextContentBlock::new("text"))
+            Some(ToolResultContent::Text("text".to_string())),
         );
         assert_eq!(tool_result.is_error, None);
 
@@ -491,12 +527,12 @@ mod tests {
 
         let tool_result = ToolResult::error(
             "id",
-            Some(TextContentBlock::new("text")),
+             Some(ToolResultContent::Text("text".to_string())),
         );
         assert_eq!(tool_result.tool_use_id, "id");
         assert_eq!(
             tool_result.content,
-            Some(TextContentBlock::new("text"))
+            Some(ToolResultContent::Text("text".to_string())),
         );
         assert_eq!(tool_result.is_error, Some(true));
 
@@ -561,7 +597,7 @@ mod tests {
             tool_result
                 .content
                 .unwrap()
-                .text,
+                .as_text().unwrap(),
             "1"
         );
 
