@@ -424,7 +424,7 @@ use clust::messages::Message;
 use clust::messages::MessagesRequestBody;
 use clust::messages::SystemPrompt;
 use clust::messages::StreamOption;
-use clust::messages::StreamChunk;
+use clust::messages::MessageChunk;
 use clust::Client;
 
 use tokio_stream::StreamExt;
@@ -464,7 +464,7 @@ async fn main() -> anyhow::Result<()> {
             | Ok(chunk) => {
                 println!("Chunk:\n{}", chunk);
                 match chunk {
-                    | StreamChunk::ContentBlockDelta(content_block_delta) => {
+                    | MessageChunk::ContentBlockDelta(content_block_delta) => {
                         // Buffer message delta.
                         buffer.push_str(&content_block_delta.delta.text);
                     }
