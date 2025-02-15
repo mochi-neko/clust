@@ -9,6 +9,7 @@ use crate::ClientError;
 
 use futures_core::Stream;
 
+#[cfg_attr(feature = "tracing", tracing::instrument)]
 pub(crate) async fn create_a_message(
     client: &Client,
     request_body: MessagesRequestBody,
@@ -65,6 +66,7 @@ pub(crate) async fn create_a_message(
     }
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument)]
 pub(crate) async fn create_a_message_stream(
     client: &Client,
     request_body: MessagesRequestBody,
