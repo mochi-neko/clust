@@ -16,13 +16,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Install cargo-hack
+        run: cargo +stable install cargo-hack --locked
       - name: Build
-        run: cargo build --verbose
-      - name: Build macros
-        run: cargo build --verbose --features macros
-      - name: Build full
-        run: cargo build --verbose --features full
+        run: cargo hack build --verbose --feature-powerset
       - name: Test
-        run: cargo test --verbose --features full
+        run: cargo hack test --verbose --feature-powerset
       - name: Doc
         run: cargo doc --verbose --features full
