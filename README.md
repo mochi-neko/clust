@@ -33,8 +33,7 @@ clust = "0.9.0"
 
 ### API key and client
 
-First you need to create a new API client: `clust::Client` with your Anthropic API key from environment variable: "
-ANTHROPIC_API_KEY"
+First you need to create a new API client: `clust::Client` with your Anthropic API key from environment variable: `ANTHROPIC_API_KEY`.
 
 ```rust,no_run
 use clust::Client;
