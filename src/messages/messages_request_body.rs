@@ -1,7 +1,7 @@
 use crate::macros::impl_display_for_serialize;
 use crate::messages::{
     ClaudeModel, MaxTokens, Message, Metadata, StopSequence, StreamOption,
-    SystemPrompt, Temperature, ToolDefinition, TopK, TopP,
+    SystemPrompt, Temperature, ToolChoice, ToolDefinition, TopK, TopP,
 };
 use crate::ValidationError;
 
@@ -82,6 +82,17 @@ pub struct MessagesRequestBody {
     /// Recommended for advanced use cases only. You usually only need to use temperature.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_k: Option<TopK>,
+    /// How the model should use the provided tools. The model can use a specific tool, any available tool, or decide by itself.
+    ///
+    /// This field is an object with the following possible structures:
+    /// - `{"type": "auto"}`: Allows the model to decide whether to use tools.
+    /// - `{"type": "any"}`: Tells the model it must use one of the provided tools, but doesn't specify which.
+    /// - `{"type": "tool", "name": "<tool_name>"}`: Forces the model to use the specified tool.
+    ///
+    /// The `type` field is required and must be one of: "auto", "any", or "tool".
+    /// When `type` is "tool", the `name` field is also required.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<ToolChoice>,
 }
 
 impl_display_for_serialize!(MessagesRequestBody);
@@ -244,6 +255,15 @@ impl MessagesRequestBuilder {
         self
     }
 
+    /// Sets the tool choice.
+    pub fn tool_choice(
+        mut self,
+        tool_choice: ToolChoice,
+    ) -> Self {
+        self.request_body.tool_choice = Some(tool_choice);
+        self
+    }
+
     /// Builds the MessagesRequestBody.
     pub fn build(self) -> MessagesRequestBody {
         self.request_body
@@ -282,6 +302,7 @@ mod tests {
         assert_eq!(messages_request_body.temperature, None);
         assert_eq!(messages_request_body.top_p, None);
         assert_eq!(messages_request_body.top_k, None);
+        assert_eq!(messages_request_body.tool_choice, None);
     }
 
     #[test]
@@ -307,6 +328,7 @@ mod tests {
         assert_eq!(messages_request_body.tools, None);
         assert_eq!(messages_request_body.top_p, None);
         assert_eq!(messages_request_body.top_k, None);
+        assert_eq!(messages_request_body.tool_choice, None);
     }
 
     #[test]
@@ -343,10 +365,11 @@ mod tests {
             tools: None,
             top_p: Some(TopP::new(0.5).unwrap()),
             top_k: Some(TopK::new(50)),
+            tool_choice: Some(ToolChoice::any),
         };
         assert_eq!(
             serde_json::to_string(&messages_request_body).unwrap(),
-            "{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"system\":\"system-prompt\",\"max_tokens\":16,\"metadata\":{\"user_id\":\"metadata\"},\"stop_sequences\":[\"stop-sequence\"],\"stream\":false,\"temperature\":0.5,\"top_p\":0.5,\"top_k\":50}"
+            "{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"system\":\"system-prompt\",\"max_tokens\":16,\"metadata\":{\"user_id\":\"metadata\"},\"stop_sequences\":[\"stop-sequence\"],\"stream\":false,\"temperature\":0.5,\"top_p\":0.5,\"top_k\":50,\"tool_choice\":{\"type\":\"any\"}}"
         );
     }
 
@@ -373,11 +396,12 @@ mod tests {
             stream: Some(StreamOption::ReturnOnce),
             temperature: Some(Temperature::new(0.5).unwrap()),
             tools: None,
+            tool_choice: Some(ToolChoice::auto),
             top_p: Some(TopP::new(0.5).unwrap()),
             top_k: Some(TopK::new(50)),
         };
         assert_eq!(
-            serde_json::from_str::<MessagesRequestBody>("{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"system\":\"system-prompt\",\"max_tokens\":16,\"metadata\":{\"user_id\":\"metadata\"},\"stop_sequences\":[\"stop-sequence\"],\"stream\":false,\"temperature\":0.5,\"top_p\":0.5,\"top_k\":50}").unwrap(),
+            serde_json::from_str::<MessagesRequestBody>("{\"model\":\"claude-3-sonnet-20240229\",\"messages\":[],\"system\":\"system-prompt\",\"max_tokens\":16,\"metadata\":{\"user_id\":\"metadata\"},\"stop_sequences\":[\"stop-sequence\"],\"stream\":false,\"temperature\":0.5,\"top_p\":0.5,\"top_k\":50,\"tool_choice\":{\"type\":\"auto\"}}").unwrap(),
             messages_request_body
         );
     }
@@ -407,6 +431,9 @@ mod tests {
                 }])
                 .top_p(TopP::new(0.5).unwrap())
                 .top_k(TopK::new(50))
+                .tool_choice(ToolChoice::tool {
+                    name: "tool".into(),
+                })
                 .build();
 
         assert_eq!(
@@ -457,6 +484,12 @@ mod tests {
         assert_eq!(
             messages_request_body.top_k,
             Some(TopK::new(50))
+        );
+        assert_eq!(
+            messages_request_body.tool_choice,
+            Some(ToolChoice::tool {
+                name: "tool".into(),
+            })
         );
     }
 
@@ -536,5 +569,49 @@ mod tests {
             messages_request_body.top_k,
             Some(TopK::new(50))
         );
+        assert_eq!(messages_request_body.tool_choice, None);
+    }
+
+    #[test]
+    fn test_messages_request_body_with_tool_choice() {
+        let request_body =
+            MessagesRequestBuilder::new(ClaudeModel::Claude3Sonnet20240229)
+                .messages(vec![Message::user(
+                    "Hello, Claude!",
+                )])
+                .max_tokens(
+                    MaxTokens::new(100, ClaudeModel::Claude3Sonnet20240229)
+                        .unwrap(),
+                )
+                .tool_choice(ToolChoice::auto)
+                .build();
+
+        assert_eq!(
+            request_body.tool_choice,
+            Some(ToolChoice::auto)
+        );
+
+        let json = serde_json::to_string(&request_body).unwrap();
+        assert!(json.contains(r#""tool_choice":{"type":"auto"}"#));
+    }
+
+    #[test]
+    fn test_messages_request_body_serialization_with_tool_choice() {
+        let request_body = MessagesRequestBody {
+            model: ClaudeModel::Claude3Sonnet20240229,
+            messages: vec![Message::user(
+                "Hello",
+            )],
+            max_tokens: MaxTokens::new(100, ClaudeModel::Claude3Sonnet20240229)
+                .unwrap(),
+            tool_choice: Some(ToolChoice::tool {
+                name: "get_weather".to_string(),
+            }),
+            ..Default::default()
+        };
+
+        let json = serde_json::to_string(&request_body).unwrap();
+        assert!(json
+            .contains(r#""tool_choice":{"type":"tool","name":"get_weather"}"#));
     }
 }
