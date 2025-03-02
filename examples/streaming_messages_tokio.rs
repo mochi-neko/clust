@@ -17,7 +17,7 @@ use clust::messages::MessagesRequestBody;
 use clust::messages::StreamOption;
 use clust::messages::SystemPrompt;
 use clust::Client;
-
+use clust::messages::ContentBlockDelta;
 use clap::Parser;
 use tokio_stream::StreamExt;
 
@@ -70,7 +70,9 @@ async fn main() -> anyhow::Result<()> {
                 println!("Chunk:\n{}", chunk);
                 match chunk {
                     | MessageChunk::ContentBlockDelta(content_block_delta) => {
-                        buffer.push_str(&content_block_delta.delta.text);
+                        if let ContentBlockDelta::TextDeltaContentBlock(delta) =  content_block_delta.delta {
+                            buffer.push_str(&delta.text);
+                        }
                     },
                     | _ => {},
                 }

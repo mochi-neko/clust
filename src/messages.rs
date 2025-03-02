@@ -43,6 +43,8 @@ pub use error::ToolCallError;
 pub use max_tokens::MaxTokens;
 pub use message::Message;
 pub use message_chunk::ContentBlockDeltaChunk;
+pub use message_chunk::ContentBlockDelta;
+pub use message_chunk::ContentBlockStart;
 pub use message_chunk::ContentBlockStartChunk;
 pub use message_chunk::ContentBlockStopChunk;
 pub use message_chunk::DeltaUsage;

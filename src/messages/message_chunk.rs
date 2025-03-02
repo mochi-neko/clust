@@ -10,6 +10,8 @@ use crate::messages::{
     StopSequence, StreamError, TextContentBlock,
 };
 
+use super::ToolUseContentBlock;
+
 /// The stream chunk of messages.
 #[derive(Debug, Clone, PartialEq)]
 pub enum MessageChunk {
@@ -317,7 +319,7 @@ pub struct ContentBlockStartChunk {
     /// The index.
     pub index: u32,
     /// The text content block of start.
-    pub content_block: TextContentBlock,
+    pub content_block: ContentBlockStart,
 }
 
 impl Default for ContentBlockStartChunk {
@@ -327,6 +329,18 @@ impl Default for ContentBlockStartChunk {
             index: Default::default(),
             content_block: Default::default(),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+pub enum ContentBlockStart {
+    TextContentBlock(TextContentBlock),
+    ToolUseContentBlock(ToolUseContentBlock),
+}
+impl Default for ContentBlockStart {
+    fn default() -> Self {
+        Self::TextContentBlock(Default::default())
     }
 }
 
@@ -341,7 +355,7 @@ impl ContentBlockStartChunk {
         Self {
             _type: MessageChunkType::ContentBlockStart,
             index,
-            content_block,
+            content_block: ContentBlockStart::TextContentBlock(content_block),
         }
     }
 }
@@ -382,7 +396,7 @@ pub struct ContentBlockDeltaChunk {
     /// The index.
     pub index: u32,
     /// The text delta content block.
-    pub delta: TextDeltaContentBlock,
+    pub delta: ContentBlockDelta,
 }
 
 impl Default for ContentBlockDeltaChunk {
@@ -397,6 +411,26 @@ impl Default for ContentBlockDeltaChunk {
 
 impl_display_for_serialize!(ContentBlockDeltaChunk);
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+pub enum ContentBlockDelta  {
+    TextDeltaContentBlock(TextDeltaContentBlock),
+    InputJsonDeltaBlock(InputJsonDeltaBlock)
+}
+
+impl Default for ContentBlockDelta {
+    fn default() -> Self {
+        ContentBlockDelta::TextDeltaContentBlock(Default::default())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct InputJsonDeltaBlock {
+    #[serde(rename = "type")]
+    pub _type: ContentType,
+    /// The partial json delta content.
+    pub partial_json: String,
+}
 impl ContentBlockDeltaChunk {
     /// Creates a new `ContentBlockDelta` instance.
     pub fn new(
@@ -406,7 +440,7 @@ impl ContentBlockDeltaChunk {
         Self {
             _type: MessageChunkType::ContentBlockDelta,
             index,
-            delta,
+            delta: ContentBlockDelta::TextDeltaContentBlock(delta),
         }
     }
 }
@@ -927,10 +961,10 @@ mod tests {
         let content_block_start = ContentBlockStartChunk {
             _type: MessageChunkType::ContentBlockStart,
             index: 1,
-            content_block: TextContentBlock {
+            content_block: ContentBlockStart::TextContentBlock(TextContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         assert_eq!(
             content_block_start.to_string(),
@@ -943,10 +977,10 @@ mod tests {
         let content_block_start = ContentBlockStartChunk {
             _type: MessageChunkType::ContentBlockStart,
             index: 1,
-            content_block: TextContentBlock {
+            content_block: ContentBlockStart::TextContentBlock(TextContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         assert_eq!(
             serde_json::to_string(&content_block_start).unwrap(),
@@ -959,10 +993,10 @@ mod tests {
         let content_block_start = ContentBlockStartChunk {
             _type: MessageChunkType::ContentBlockStart,
             index: 1,
-            content_block: TextContentBlock {
+            content_block: ContentBlockStart::TextContentBlock(TextContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         assert_eq!(
             serde_json::from_str::<ContentBlockStartChunk>(
@@ -1027,10 +1061,10 @@ mod tests {
         let content_block_delta = ContentBlockDeltaChunk {
             _type: MessageChunkType::ContentBlockDelta,
             index: 1,
-            delta: TextDeltaContentBlock {
+            delta: ContentBlockDelta::TextDeltaContentBlock(TextDeltaContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         assert_eq!(
             content_block_delta.to_string(),
@@ -1043,10 +1077,10 @@ mod tests {
         let content_block_delta = ContentBlockDeltaChunk {
             _type: MessageChunkType::ContentBlockDelta,
             index: 1,
-            delta: TextDeltaContentBlock {
+            delta: ContentBlockDelta::TextDeltaContentBlock(TextDeltaContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         assert_eq!(
             serde_json::to_string(&content_block_delta).unwrap(),
@@ -1059,10 +1093,10 @@ mod tests {
         let content_block_delta = ContentBlockDeltaChunk {
             _type: MessageChunkType::ContentBlockDelta,
             index: 1,
-            delta: TextDeltaContentBlock {
+            delta: ContentBlockDelta::TextDeltaContentBlock(TextDeltaContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         assert_eq!(
             serde_json::from_str::<ContentBlockDeltaChunk>(
@@ -1253,19 +1287,19 @@ mod tests {
         let content_block_start = ContentBlockStartChunk {
             _type: MessageChunkType::ContentBlockStart,
             index: 1,
-            content_block: TextContentBlock {
+            content_block: ContentBlockStart::TextContentBlock(TextContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         let ping = PingChunk::default();
         let content_block_delta = ContentBlockDeltaChunk {
             _type: MessageChunkType::ContentBlockDelta,
             index: 1,
-            delta: TextDeltaContentBlock {
+            delta: ContentBlockDelta::TextDeltaContentBlock(TextDeltaContentBlock {
                 text: "text".to_string(),
                 ..Default::default()
-            },
+            }),
         };
         let content_block_stop = ContentBlockStopChunk {
             _type: MessageChunkType::ContentBlockStop,
@@ -1351,10 +1385,10 @@ data: {"type": "content_block_start", "index": 0, "content_block": {"type": "tex
             MessageChunk::ContentBlockStart(ContentBlockStartChunk {
                 _type: MessageChunkType::ContentBlockStart,
                 index: 0,
-                content_block: TextContentBlock {
+                content_block: ContentBlockStart::TextContentBlock(TextContentBlock {
                     text: "".to_string(),
                     ..Default::default()
-                },
+                }),
             })
         );
 
@@ -1376,10 +1410,10 @@ data: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta"
             MessageChunk::ContentBlockDelta(ContentBlockDeltaChunk {
                 _type: MessageChunkType::ContentBlockDelta,
                 index: 0,
-                delta: TextDeltaContentBlock {
+                delta: ContentBlockDelta::TextDeltaContentBlock(TextDeltaContentBlock {
                     text: "Hello".to_string(),
                     ..Default::default()
-                },
+                }),
             })
         );
 
